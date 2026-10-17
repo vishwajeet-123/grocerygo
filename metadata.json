@@ -1,0 +1,6 @@
+{
+  "name": "GroceryGo – Smart Local Grocery Delivery",
+  "description": "Smart local grocery delivery connecting customers with supermarkets and neighborhood kirana stores in Mysuru, Karnataka.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

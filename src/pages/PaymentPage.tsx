@@ -21,6 +21,7 @@ interface PaymentPageProps {
   onNavigateCheckout: () => void;
   onNavigateCart: () => void;
   onNavigateTracking?: () => void;
+  onCompleteOrder?: () => void;
 }
 
 export const PaymentPage: React.FC<PaymentPageProps> = ({
@@ -37,6 +38,7 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({
   onNavigateCheckout,
   onNavigateCart,
   onNavigateTracking,
+  onCompleteOrder,
 }) => {
   const [isSimulationOpen, setIsSimulationOpen] = useState(false);
 
@@ -134,7 +136,11 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({
         onReturnHome={onNavigateHome}
         onTrackOrder={() => {
           setIsSimulationOpen(false);
-          onNavigateTracking?.();
+          if (onCompleteOrder) {
+            onCompleteOrder();
+          } else {
+            onNavigateTracking?.();
+          }
         }}
       />
     </div>

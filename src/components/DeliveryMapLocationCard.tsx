@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigation, ArrowRight, ArrowLeft, MapPin, Store } from 'lucide-react';
 import { Store as StoreType } from '../types';
 import { SavedAddress } from './AddressSelector';
+import { InteractiveGoogleMap } from './InteractiveGoogleMap';
 
 interface DeliveryMapLocationCardProps {
   store: StoreType;
@@ -34,39 +35,48 @@ export const DeliveryMapLocationCard: React.FC<DeliveryMapLocationCardProps> = (
         </span>
       </div>
 
-      {/* Map Preview Graphic */}
-      <div className="relative w-full h-44 sm:h-52 rounded-xl overflow-hidden border border-slate-200 mt-3.5 shadow-2xs group">
-        <img
-          src="/src/assets/images/store_route_map_preview_1792254220866.jpg"
-          alt="Delivery route from Shree Lakshmi Kirana to customer address"
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
-          referrerPolicy="no-referrer"
+      {/* Interactive Google Map Preview */}
+      <div className="mt-3.5">
+        <InteractiveGoogleMap
+          center={{ lat: 12.3392, lng: 76.5927 }}
+          zoom={14}
+          height="220px"
+          markers={[
+            {
+              id: 'store-origin',
+              title: store.name,
+              subtitle: 'Dispatching Kirana / Supermarket',
+              position: { lat: 12.3392, lng: 76.5927 },
+              type: 'store',
+              badge: store.name,
+            },
+            {
+              id: 'customer-dest',
+              title: `${addressLabel}: ${addressText}`,
+              subtitle: 'Delivery Destination',
+              position:
+                selectedAddress?.label === 'College'
+                  ? { lat: 12.2850, lng: 76.6450 }
+                  : { lat: 12.3375, lng: 76.5980 },
+              type: 'customer',
+              badge: `Deliver to ${addressLabel}`,
+            },
+          ]}
+          routeCoordinates={[
+            { lat: 12.3392, lng: 76.5927 },
+            selectedAddress?.label === 'College'
+              ? { lat: 12.2850, lng: 76.6450 }
+              : { lat: 12.3375, lng: 76.5980 },
+          ]}
         />
-
-        {/* Subtle protective gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-black/15 pointer-events-none" />
-
-        {/* Store marker pin (Top-left) */}
-        <div className="absolute top-4 left-4 sm:left-6 flex items-center gap-1.5 bg-white/95 px-2.5 py-1.5 rounded-xl shadow-md border border-red-200 text-xs font-bold text-slate-900">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-          <Store className="w-3.5 h-3.5 text-red-600" />
-          <span>{store.name}</span>
-        </div>
-
-        {/* Customer marker pin (Bottom-right) */}
-        <div className="absolute bottom-5 right-4 sm:right-6 flex items-center gap-1.5 bg-white/95 px-2.5 py-1.5 rounded-xl shadow-md border border-blue-200 text-xs font-bold text-slate-900">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-          <MapPin className="w-3.5 h-3.5 text-blue-600" />
-          <span className="truncate max-w-[140px] sm:max-w-[200px]">
-            {addressLabel}: {addressText}
+        <div className="flex items-center justify-between text-xs text-slate-500 mt-2 px-1">
+          <span className="flex items-center gap-1 font-semibold text-slate-700">
+            <Navigation className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Route: {store.name} ➔ {addressLabel}</span>
           </span>
-        </div>
-
-        {/* Bottom Route Summary Tag */}
-        <div className="absolute bottom-2 left-3 flex items-center gap-2 text-[10px] font-bold text-white drop-shadow">
-          <span>Hootagalli ➔ {addressLabel}</span>
-          <span>·</span>
-          <span className="text-emerald-300 font-extrabold">{store.distance} (15–25 mins)</span>
+          <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+            {store.distance} (15–25 mins)
+          </span>
         </div>
       </div>
 

@@ -35,7 +35,21 @@ export default function App() {
   // 3. Onion: 1 kg, ₹32 (orig ₹40), qty: 1 -> ₹32
   // 4. Maggi Noodles: 280 g, ₹60 (orig ₹70), qty: 1 -> ₹60
   // Distinct Items: 4 | Total Units: 5 | Subtotal: ₹392 | Packing: ₹10 | Total: ₹402
-  const getSampleCartItems = (): CartItem[] => {
+  // Dynamic sample cart based on active store (Shree Lakshmi Kirana or Reliance Smart)
+  const getSampleCartItems = (storeId: string = 'shree-lakshmi-kirana'): CartItem[] => {
+    if (storeId === 'reliance-smart') {
+      const rsAtta = PRODUCTS.find((p) => p.id === 'rs-aashirvaad-atta') || PRODUCTS[4];
+      const rsTomato = PRODUCTS.find((p) => p.id === 'rs-tomato') || PRODUCTS[0];
+      const rsOnion = PRODUCTS.find((p) => p.id === 'rs-onion') || PRODUCTS[1];
+      const rsMaggi = PRODUCTS.find((p) => p.id === 'rs-maggi-noodles') || PRODUCTS[7];
+      return [
+        { product: rsAtta, quantity: 1 },
+        { product: rsTomato, quantity: 2 },
+        { product: rsOnion, quantity: 1 },
+        { product: rsMaggi, quantity: 1 },
+      ];
+    }
+
     const atta = PRODUCTS.find((p) => p.id === 'slk-aashirvaad-atta') || PRODUCTS[4];
     const tomato = PRODUCTS.find((p) => p.id === 'slk-tomato') || PRODUCTS[0];
     const onion = PRODUCTS.find((p) => p.id === 'slk-onion') || PRODUCTS[1];
@@ -50,12 +64,13 @@ export default function App() {
   };
 
   const [cartItems, setCartItems] = useState<CartItem[]>(getSampleCartItems());
+  const [storeToast, setStoreToast] = useState<string | null>(null);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
-  // Active page: Defaults to 'tracking' to immediately showcase PHASE 6: Order Tracking & Remote-Area Delivery Maps!
+  // Active page
   const [currentPage, setCurrentPage] = useState<AppPage>('tracking');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('shree-lakshmi-kirana');
   const [activeCategorySlug, setActiveCategorySlug] = useState('Fruits & Vegetables');
@@ -158,18 +173,88 @@ export default function App() {
     return cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
   }, [cartItems]);
 
+  // Store selection & Cart migration operation
+  const handleSelectStore = (storeId: string) => {
+    setSelectedStoreId(storeId);
+    const targetStore = STORES.find((s) => s.id === storeId) || STORES[0];
+
+    // Synchronize cart items to the selected store (e.g. Reliance Smart)
+    setCartItems((prevItems) => {
+      if (prevItems.length === 0) {
+        return getSampleCartItems(storeId);
+      }
+      return prevItems.map((item) => {
+        // Try finding matching item in target store (e.g., Tomato, Atta, Onion)
+        const match = PRODUCTS.find(
+          (p) =>
+            p.storeId === storeId &&
+            (p.name.toLowerCase().includes(item.product.name.toLowerCase().split(' ')[0]) ||
+              p.category === item.product.category)
+        );
+        if (match) {
+          return { product: match, quantity: item.quantity };
+        }
+        // Adapt item metadata to the new store
+        return {
+          ...item,
+          product: {
+            ...item.product,
+            id: `${storeId}-${item.product.id.replace(/^(slk|rs|prod)-/, '')}`,
+            storeId: targetStore.id,
+            storeName: targetStore.name,
+            storeType: targetStore.type,
+            distance: targetStore.distance,
+            deliveryTime: targetStore.deliveryTime,
+          },
+        };
+      });
+    });
+
+    setStoreToast(`Cart is now fulfilled by ${targetStore.name} (${targetStore.type})`);
+    setTimeout(() => setStoreToast(null), 3500);
+  };
+
   // Cart operations
   const handleAddToCart = (product: Product) => {
+    // If the product belongs to a specific store (e.g. Reliance Smart)
+    if (product.storeId && product.storeId !== selectedStoreId) {
+      setSelectedStoreId(product.storeId);
+    }
+
     setCartItems((prevItems) => {
-      const existing = prevItems.find((item) => item.product.id === product.id);
+      // Check if previous cart was from another store
+      const hasDifferentStore =
+        product.storeId &&
+        prevItems.some((it) => it.product.storeId && it.product.storeId !== product.storeId);
+
+      let workingItems = prevItems;
+      if (hasDifferentStore && product.storeId) {
+        const targetStore = STORES.find((s) => s.id === product.storeId);
+        // Seamlessly transfer cart to target store
+        workingItems = prevItems.map((it) => ({
+          ...it,
+          product: {
+            ...it.product,
+            storeId: targetStore?.id || product.storeId,
+            storeName: targetStore?.name || product.storeName,
+            storeType: targetStore?.type || product.storeType,
+            distance: targetStore?.distance || product.distance,
+            deliveryTime: targetStore?.deliveryTime || product.deliveryTime,
+          },
+        }));
+        setStoreToast(`Added ${product.name} from ${product.storeName || targetStore?.name || 'store'}!`);
+        setTimeout(() => setStoreToast(null), 3500);
+      }
+
+      const existing = workingItems.find((item) => item.product.id === product.id);
       if (existing) {
-        return prevItems.map((item) =>
+        return workingItems.map((item) =>
           item.product.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      return [...prevItems, { product, quantity: 1 }];
+      return [...workingItems, { product, quantity: 1 }];
     });
   };
 
@@ -196,7 +281,7 @@ export default function App() {
   };
 
   const handleRestoreSampleCart = () => {
-    setCartItems(getSampleCartItems());
+    setCartItems(getSampleCartItems(selectedStoreId));
   };
 
   // Address operations
@@ -275,6 +360,103 @@ export default function App() {
   const handleRemoveCoupon = () => {
     setCouponCode('');
     setCouponDiscount(0);
+  };
+
+  // Complete simulated order from fulfillingStore
+  const handleCompleteOrder = () => {
+    const newOrderId = `ord-${Date.now().toString().slice(-4)}`;
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const newOrder: Order = {
+      id: newOrderId,
+      orderNumber: `#GG-MYS-${randomSuffix}`,
+      createdAt: 'Just now',
+      status: 'confirmed',
+      store: fulfillingStore,
+      deliveryAddress: {
+        id: selectedAddress.id,
+        name: selectedAddress.label,
+        address: `${selectedAddress.streetAddress}, Mysuru - ${selectedAddress.pincode}`,
+        landmark: selectedAddress.landmark,
+        lat: selectedAddress.label === 'College' ? 12.285 : 12.3375,
+        lng: selectedAddress.label === 'College' ? 76.645 : 76.598,
+        distanceKm: fulfillingStore.distanceKm || 2.1,
+        estimatedMins: fulfillingStore.minDeliveryMins || 25,
+        isRemote: false,
+        localityType: 'hyperlocal',
+        deliveryFee: 0,
+        areaTag: 'Local Delivery',
+      },
+      items: [...cartItems],
+      subtotal: itemTotal,
+      packingFee: 10,
+      deliveryFee: 0,
+      discount: couponDiscount,
+      totalAmount: Math.max(0, itemTotal + 10 - couponDiscount),
+      paymentMethod,
+      paymentStatus: 'paid',
+      timeline: [
+        {
+          status: 'placed',
+          title: 'Order Placed',
+          description: `Received by ${fulfillingStore.name} system`,
+          time: 'Just now',
+          isCompleted: true,
+          isCurrent: false,
+        },
+        {
+          status: 'confirmed',
+          title: 'Order Confirmed',
+          description: `${fulfillingStore.name} store manager confirmed items`,
+          time: 'Just now',
+          isCompleted: true,
+          isCurrent: true,
+        },
+        {
+          status: 'packing',
+          title: 'Packing Items',
+          description: 'Hygiene checked and sealed in tamper-proof carry bag',
+          time: 'In progress',
+          isCompleted: false,
+          isCurrent: false,
+        },
+        {
+          status: 'out_for_delivery',
+          title: 'Out for Delivery',
+          description: 'Assigned to delivery executive',
+          time: 'Upcoming',
+          isCompleted: false,
+          isCurrent: false,
+        },
+        {
+          status: 'delivered',
+          title: 'Delivered',
+          description: 'Doorstep contactless delivery',
+          time: 'Upcoming',
+          isCompleted: false,
+          isCurrent: false,
+        },
+      ],
+      deliveryPartner: {
+        id: 'dp-ramesh',
+        name: 'Ramesh Kumar',
+        phone: '+91 94481 23456',
+        rating: 4.9,
+        totalDeliveries: 1420,
+        vehicleType: 'Hero Electric Optima',
+        vehicleNumber: 'KA-09-EM-4821',
+        photoUrl: '/src/assets/images/store_local_kirana_1792249945848.jpg',
+        currentLat: 12.338,
+        currentLng: 76.595,
+      },
+      deliveryOtp: `${Math.floor(1000 + Math.random() * 9000)}`,
+      estimatedDeliveryTime: `${fulfillingStore.minDeliveryMins || 25} mins`,
+    };
+
+    setOrders((prev) => [newOrder, ...prev]);
+    setActiveTrackingOrderId(newOrderId);
+    handleClearCart();
+    setCurrentPage('tracking');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Navigation router handler
@@ -395,6 +577,8 @@ export default function App() {
             onNavigateHome={() => handleNavigate('home')}
             onNavigateCart={() => handleNavigate('cart')}
             onContinueToPayment={() => handleNavigate('payment')}
+            onSelectStore={handleSelectStore}
+            stores={STORES}
           />
         ) : currentPage === 'payment' ? (
           /* PHASE 5: Screen 2 — Payment (Payment Method Selection & UPI) */
@@ -412,11 +596,13 @@ export default function App() {
             onNavigateCheckout={() => handleNavigate('checkout')}
             onNavigateCart={() => handleNavigate('cart')}
             onNavigateTracking={() => handleNavigate('tracking')}
+            onCompleteOrder={handleCompleteOrder}
           />
         ) : currentPage === 'cart' ? (
           /* PHASE 4: Shopping Cart and Order Summary Page */
           <CartPage
             cartItems={cartItems}
+            store={fulfillingStore}
             onUpdateQuantity={handleUpdateQuantity}
             onRemoveItem={handleRemoveItem}
             onClearCart={handleClearCart}
@@ -425,9 +611,11 @@ export default function App() {
             onNavigateStores={() => handleNavigate('stores')}
             onNavigateCategories={() => handleNavigate('categories')}
             onViewStore={(storeId) => {
-              setSelectedStoreId(storeId);
+              handleSelectStore(storeId);
               handleNavigate('stores');
             }}
+            onSelectStore={handleSelectStore}
+            availableStores={STORES}
             selectedLocation={selectedLocation}
             onUpdateLocation={(newLoc) => setSelectedLocation(newLoc)}
             onRestoreSampleCart={handleRestoreSampleCart}
@@ -438,7 +626,7 @@ export default function App() {
           <StoreDetailsPage
             currentStoreId={selectedStoreId}
             onSelectStore={(storeId) => {
-              setSelectedStoreId(storeId);
+              handleSelectStore(storeId);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             cartItems={cartItems}
@@ -488,7 +676,7 @@ export default function App() {
             {/* Nearby Stores */}
             <NearbyStores
               onStoreSelected={(store: Store) => {
-                setSelectedStoreId(store.id);
+                handleSelectStore(store.id);
                 setCurrentPage('stores');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
@@ -608,6 +796,13 @@ export default function App() {
               Got it
             </button>
           </div>
+        </div>
+      )}
+      {/* Floating Store Notification Toast */}
+      {storeToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-slate-700/80 animate-in fade-in slide-in-from-bottom-3 duration-200 backdrop-blur-xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span>{storeToast}</span>
         </div>
       )}
     </div>

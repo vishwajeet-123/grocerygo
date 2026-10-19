@@ -1,16 +1,19 @@
 import React from 'react';
 import { Zap, Calendar, Clock } from 'lucide-react';
+import { Store } from '../types';
 
 export type DeliveryTimeOption = 'express' | 'scheduled';
 
 interface DeliveryTimeSelectorProps {
   selectedOption: DeliveryTimeOption;
   onSelectOption: (option: DeliveryTimeOption) => void;
+  store?: Store;
 }
 
 export const DeliveryTimeSelector: React.FC<DeliveryTimeSelectorProps> = ({
   selectedOption,
   onSelectOption,
+  store,
 }) => {
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs mb-4">
@@ -51,11 +54,11 @@ export const DeliveryTimeSelector: React.FC<DeliveryTimeSelectorProps> = ({
 
             <p className="text-xs font-extrabold text-emerald-950 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-emerald-700" />
-              <span>15 - 25 mins</span>
+              <span>{store?.deliveryTime || '15 - 25 mins'}</span>
             </p>
 
             <p className="text-[11px] text-slate-500 font-medium">
-              Direct dispatch from Shree Lakshmi Kirana
+              Direct dispatch from {store?.name || 'Shree Lakshmi Kirana'}
             </p>
           </div>
         </div>

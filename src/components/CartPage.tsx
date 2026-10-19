@@ -34,6 +34,9 @@ interface CartPageProps {
   onUpdateLocation: (newLocation: string) => void;
   onRestoreSampleCart: () => void;
   onNavigateCheckout?: () => void;
+  store?: Store;
+  onSelectStore?: (storeId: string) => void;
+  availableStores?: Store[];
 }
 
 export const CartPage: React.FC<CartPageProps> = ({
@@ -50,6 +53,9 @@ export const CartPage: React.FC<CartPageProps> = ({
   onUpdateLocation,
   onRestoreSampleCart,
   onNavigateCheckout,
+  store,
+  onSelectStore,
+  availableStores = STORES,
 }) => {
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
@@ -58,8 +64,12 @@ export const CartPage: React.FC<CartPageProps> = ({
     selectedLocation || '#123, 5th Cross, Hootagalli, Mysuru - 570018'
   );
 
-  // Shree Lakshmi Kirana is the primary fulfilling store
-  const fulfillingStore: Store = STORES[0];
+  // Active fulfilling store (Reliance Smart, Shree Lakshmi Kirana, etc.)
+  const fulfillingStore: Store =
+    store ||
+    (cartItems[0]?.product?.storeId
+      ? STORES.find((s) => s.id === cartItems[0]?.product?.storeId) || STORES[0]
+      : STORES[0]);
 
   // Distinct product entries count (e.g. 4 items initially)
   const distinctItemCount = cartItems.length;
@@ -150,10 +160,12 @@ export const CartPage: React.FC<CartPageProps> = ({
             )}
           </div>
 
-          {/* Store Information Card (Shree Lakshmi Kirana) */}
+          {/* Store Information Card */}
           <CartStoreHeader
             store={fulfillingStore}
             onViewStore={onViewStore}
+            onSelectStore={onSelectStore}
+            availableStores={availableStores}
           />
 
           {/* Cart Item List or Empty State */}
@@ -202,14 +214,14 @@ export const CartPage: React.FC<CartPageProps> = ({
                   className="px-4 py-2.5 border border-emerald-600 text-emerald-700 hover:bg-emerald-50 font-bold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Restore Sample Cart (4 items)</span>
+                  <span>Restore Sample Cart</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* Add More Items Section (Section 11: Potato, Banana, Milk, Sunflower Oil) */}
-          <AddMoreItems onAddToCart={onAddToCart} />
+          {/* Add More Items Section (Dynamic to Fulfilling Store) */}
+          <AddMoreItems onAddToCart={onAddToCart} store={fulfillingStore} />
         </section>
 
         {/* RIGHT COLUMN: ~30–32% */}

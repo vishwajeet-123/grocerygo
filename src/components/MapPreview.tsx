@@ -1,16 +1,35 @@
 import React, { useState } from 'react';
 import { MapPin, Navigation, Store, X, Clock, ExternalLink, ShieldAlert } from 'lucide-react';
 import { STORES } from '../data/stores';
+import { InteractiveGoogleMap, MapMarkerItem } from './InteractiveGoogleMap';
 
 interface MapPreviewProps {
   currentLocationName?: string;
 }
+
+const STORE_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  'shree-lakshmi-kirana': { lat: 12.3392, lng: 76.5927 },
+  'more-fresh-supermarket': { lat: 12.3350, lng: 76.6020 },
+  'reliance-smart': { lat: 12.3275, lng: 76.5810 },
+  'sri-krishna-provision': { lat: 12.3250, lng: 76.6280 },
+  'cauvery-supermarket': { lat: 12.3200, lng: 76.6340 },
+  'daily-needs-kirana': { lat: 12.3150, lng: 76.6380 },
+};
 
 export const MapPreview: React.FC<MapPreviewProps> = ({
   currentLocationName = 'Hootagalli, Mysuru',
 }) => {
   const [isFullMapOpen, setIsFullMapOpen] = useState(false);
   const [selectedPinStore, setSelectedPinStore] = useState(STORES[0]);
+
+  const storeMarkers: MapMarkerItem[] = STORES.map((st) => ({
+    id: st.id,
+    title: st.name,
+    subtitle: `${st.type} · ${st.distance}`,
+    position: STORE_COORDINATES[st.id] || { lat: 12.3392, lng: 76.5927 },
+    type: 'store',
+    badge: st.name,
+  }));
 
   return (
     <>
@@ -61,7 +80,7 @@ export const MapPreview: React.FC<MapPreviewProps> = ({
                   <MapPin className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Mysuru Hyperlocal Store Map</h3>
+                  <h3 className="font-bold text-slate-900 text-base">Google Maps Store Locator</h3>
                   <p className="text-xs text-slate-500">
                     Showing 6 nearby supermarkets and local kirana stores around {currentLocationName}
                   </p>
@@ -70,40 +89,29 @@ export const MapPreview: React.FC<MapPreviewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsFullMapOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Content: Split Map + Store List */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-12 overflow-hidden min-h-[360px]">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-12 overflow-hidden min-h-[380px]">
               
-              {/* Map Canvas (7 cols) */}
-              <div className="md:col-span-7 relative bg-slate-100 overflow-hidden min-h-[260px] md:min-h-full">
-                <img
-                  src="/src/assets/images/mysuru_local_map_1792253010616.jpg"
-                  alt="Mysuru store locator map"
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
+              {/* Map Canvas (7 cols) with Live Google Map */}
+              <div className="md:col-span-7 relative bg-slate-100 overflow-hidden min-h-[280px] md:min-h-full p-2">
+                <InteractiveGoogleMap
+                  center={
+                    STORE_COORDINATES[selectedPinStore.id] || {
+                      lat: 12.3392,
+                      lng: 76.5927,
+                    }
+                  }
+                  zoom={13}
+                  height="100%"
+                  className="min-h-[340px]"
+                  markers={storeMarkers}
                 />
-
-                {/* Overlaid Pin Cards */}
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-xs p-2.5 rounded-xl shadow-md border border-slate-100 max-w-[240px]">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
-                    <Store className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{selectedPinStore.name}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{selectedPinStore.address}</p>
-                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100 text-[10px]">
-                    <span className="font-semibold text-slate-700">{selectedPinStore.distance}</span>
-                    <span className="font-bold text-emerald-700">{selectedPinStore.deliveryTime}</span>
-                  </div>
-                </div>
-
-                <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md text-[10px] text-slate-500 border border-slate-100">
-                  Phase 2 Hyperlocal Preview · Google Maps API integration ready for Phase 3
-                </div>
               </div>
 
               {/* Stores Sidebar (5 cols) */}

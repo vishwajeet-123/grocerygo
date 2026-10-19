@@ -10,8 +10,10 @@ import {
   CheckCircle2,
   X,
   Sparkles,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { CartItem, Store } from '../types';
+import { STORES } from '../data/stores';
 
 interface OrderSummaryPanelProps {
   cartItems: CartItem[];
@@ -23,6 +25,8 @@ interface OrderSummaryPanelProps {
   onRemoveCoupon: () => void;
   packingCharge?: number;
   deliveryFee?: number;
+  onSelectStore?: (storeId: string) => void;
+  availableStores?: Store[];
 }
 
 export const OrderSummaryPanel: React.FC<OrderSummaryPanelProps> = ({
@@ -35,7 +39,10 @@ export const OrderSummaryPanel: React.FC<OrderSummaryPanelProps> = ({
   onRemoveCoupon,
   packingCharge = 10,
   deliveryFee = 0,
+  onSelectStore,
+  availableStores = STORES,
 }) => {
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [inputCoupon, setInputCoupon] = useState('');
   const [couponError, setCouponError] = useState('');
   const [couponSuccess, setCouponSuccess] = useState(
@@ -113,13 +120,26 @@ export const OrderSummaryPanel: React.FC<OrderSummaryPanelProps> = ({
           </div>
 
           <div className="min-w-0 flex-1 space-y-0.5">
-            <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-xs sm:text-sm text-slate-900 truncate">
-                {store.name}
-              </h3>
-              <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0">
-                Kirana Store
-              </span>
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h3 className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                  {store.name}
+                </h3>
+                <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0">
+                  {store.type || 'Supermarket'}
+                </span>
+              </div>
+              {onSelectStore && (
+                <button
+                  type="button"
+                  onClick={() => setIsStoreModalOpen(true)}
+                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-0.5 cursor-pointer shrink-0"
+                  title="Switch fulfilling store"
+                >
+                  <ArrowLeftRight className="w-3 h-3" />
+                  <span>Change</span>
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-2 text-[11px] text-slate-500">
@@ -294,6 +314,85 @@ export const OrderSummaryPanel: React.FC<OrderSummaryPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Store Selection Modal */}
+      {isStoreModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Select Fulfilling Store</h3>
+                <p className="text-xs text-slate-500">Pick a store for delivery dispatch</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStoreModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+              {availableStores.map((st) => {
+                const isCurrent = st.id === store.id;
+                return (
+                  <div
+                    key={st.id}
+                    onClick={() => {
+                      onSelectStore?.(st.id);
+                      setIsStoreModalOpen(false);
+                    }}
+                    className={`p-3 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                      isCurrent
+                        ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-600/20'
+                        : 'border-slate-200 hover:border-emerald-300 hover:bg-slate-50/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-100">
+                        <img
+                          src={st.image}
+                          alt={st.name}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                            {st.name}
+                          </h4>
+                          {isCurrent && (
+                            <span className="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">{st.address}</p>
+                        <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">
+                          {st.distance} · {st.deliveryTime}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
+                        isCurrent
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white border border-slate-200 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700'
+                      }`}
+                    >
+                      {isCurrent ? 'Selected' : 'Select'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };

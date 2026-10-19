@@ -29,6 +29,8 @@ interface CheckoutPageProps {
   onNavigateHome: () => void;
   onNavigateCart: () => void;
   onContinueToPayment: () => void;
+  onSelectStore?: (storeId: string) => void;
+  stores?: Store[];
 }
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
@@ -52,6 +54,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   onNavigateHome,
   onNavigateCart,
   onContinueToPayment,
+  onSelectStore,
+  stores,
 }) => {
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId) || addresses[0];
 
@@ -99,6 +103,36 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8 mt-2">
           {/* Left Column: Form & Address Details (~68%) */}
           <div className="w-full lg:w-[68%] min-w-0">
+            {/* Store Information Banner */}
+            <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-3 sm:p-3.5 mb-4 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl overflow-hidden border border-emerald-300 shrink-0 bg-white">
+                  <img src={store.image} alt={store.name} className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Fulfilling Store:</span>
+                    <strong className="text-xs sm:text-sm font-bold text-slate-900 truncate">{store.name}</strong>
+                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {store.type || 'Supermarket'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{store.address} · {store.distance} ({store.deliveryTime})</p>
+                </div>
+              </div>
+
+              {onSelectStore && (
+                <button
+                  type="button"
+                  onClick={onNavigateCart}
+                  className="px-3 py-1.5 bg-white border border-emerald-300 hover:bg-emerald-100/50 text-emerald-800 font-bold text-xs rounded-xl shadow-2xs transition-colors shrink-0 cursor-pointer"
+                  title="Switch fulfilling store in cart"
+                >
+                  Switch Store
+                </button>
+              )}
+            </div>
+
             {/* Step 1: Delivery Address */}
             <AddressSelector
               addresses={addresses}
@@ -120,6 +154,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <DeliveryTimeSelector
               selectedOption={deliveryTimeOption}
               onSelectOption={onSelectDeliveryTimeOption}
+              store={store}
             />
 
             {/* Step 4: Map & Delivery Location + Navigation Buttons */}
@@ -143,6 +178,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               onRemoveCoupon={onRemoveCoupon}
               packingCharge={10}
               deliveryFee={0}
+              onSelectStore={onSelectStore}
+              availableStores={stores}
             />
           </div>
         </div>

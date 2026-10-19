@@ -36,10 +36,14 @@ import {
   Sliders,
   CheckCircle2,
   Truck,
+  Key,
+  ShieldCheck,
 } from 'lucide-react';
-
-const GOOGLE_MAPS_API_KEY =
-  (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
+import {
+  getEffectiveGoogleMapsApiKey,
+  isValidGoogleMapsApiKey,
+  saveUserGoogleMapsApiKey,
+} from '../utils/googleMaps';
 
 // Mysuru Coordinates fallback: Shree Lakshmi Kirana in Hootagalli
 const DEFAULT_STORE_COORDS = { lat: 12.3392, lng: 76.5927 };
@@ -156,12 +160,35 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   onUpdateConfig,
   allowPickLocation = true,
 }) => {
+  const [apiKey, setApiKey] = useState<string>(() => getEffectiveGoogleMapsApiKey());
   const [mapError, setMapError] = useState(false);
+  const [keyInput, setKeyInput] = useState('');
+  const [keySaveMsg, setKeySaveMsg] = useState<string | null>(null);
   const [activeMarkerInfo, setActiveMarkerInfo] = useState<
     'store' | 'partner' | 'customer' | null
   >(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [customRadius, setCustomRadius] = useState(serviceConfig.remoteMaxKm);
+
+  useEffect(() => {
+    const handleAuthFailed = () => {
+      setMapError(true);
+    };
+    const handleKeyUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      setApiKey(customEvent.detail || getEffectiveGoogleMapsApiKey());
+      setMapError(false);
+    };
+
+    window.addEventListener('gmp-auth-failed', handleAuthFailed);
+    window.addEventListener('gmp-key-updated', handleKeyUpdated);
+    return () => {
+      window.removeEventListener('gmp-auth-failed', handleAuthFailed);
+      window.removeEventListener('gmp-key-updated', handleKeyUpdated);
+    };
+  }, []);
+
+  const isKeyValid = isValidGoogleMapsApiKey(apiKey);
 
   // Store coordinates (Shree Lakshmi Kirana in Hootagalli, or matched store)
   const storeCoords = useMemo(() => {
@@ -298,9 +325,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
 
       {/* Main Map Canvas */}
       <div className="relative w-full h-[400px] sm:h-[460px] bg-slate-100">
-        {!mapError && GOOGLE_MAPS_API_KEY ? (
+        {!mapError && isKeyValid ? (
           <APIProvider
-            apiKey={GOOGLE_MAPS_API_KEY}
+            apiKey={apiKey}
             onError={(err) => {
               console.warn('Google Maps API load issue, using vector map:', err);
               setMapError(true);
@@ -729,6 +756,55 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
                   <span className="text-purple-700 font-bold">
                     12 to {customRadius} km
                   </span>
+                </div>
+              </div>
+
+              {/* Maps Platform Engine Status */}
+              <div className="bg-emerald-50/60 p-3 rounded-2xl border border-emerald-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-emerald-700" />
+                    Maps Engine Status
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isKeyValid && !mapError ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                    {isKeyValid && !mapError ? 'Live Google Maps' : 'Interactive Vector Engine'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600">
+                  {isKeyValid && !mapError
+                    ? 'Connected with Google Maps Platform API key (AdvancedMarker & Routes active).'
+                    : 'Currently utilizing the high-fidelity Mysuru Geodesic Vector Engine with real-time distance calculations and route projection.'}
+                </p>
+                <div className="pt-1">
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="Enter Google Maps API key (AIzaSy...)"
+                      value={keyInput}
+                      onChange={(e) => setKeyInput(e.target.value)}
+                      className="flex-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-emerald-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isValidGoogleMapsApiKey(keyInput)) {
+                          saveUserGoogleMapsApiKey(keyInput);
+                          setKeySaveMsg('Valid Google Maps key connected!');
+                          setKeyInput('');
+                        } else {
+                          setKeySaveMsg('Key must start with AIza (Google Maps API key format)');
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-xs cursor-pointer"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                  {keySaveMsg && (
+                    <p className={`text-[10px] mt-1 font-medium ${keySaveMsg.includes('Valid') ? 'text-emerald-700' : 'text-rose-600'}`}>
+                      {keySaveMsg}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

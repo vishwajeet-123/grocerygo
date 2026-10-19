@@ -1,66 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Plus, Check } from 'lucide-react';
-import { Product } from '../types';
+import { Product, Store } from '../types';
 import { PRODUCTS } from '../data/products';
 
 interface AddMoreItemsProps {
   onAddToCart: (product: Product) => void;
+  store?: Store;
 }
 
-export const AddMoreItems: React.FC<AddMoreItemsProps> = ({ onAddToCart }) => {
+export const AddMoreItems: React.FC<AddMoreItemsProps> = ({ onAddToCart, store }) => {
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
 
-  // Exact 4 suggested products from Section 11
-  const suggestedProducts: Product[] = [
-    // 1. Potato (1 kg, ₹25, orig ₹35)
-    PRODUCTS.find((p) => p.id === 'slk-potato') || {
-      id: 'slk-potato',
-      name: 'Potato',
-      category: 'Fruits & Vegetables',
-      quantity: '1 kg',
-      price: 25,
-      originalPrice: 35,
-      image: '/src/assets/images/prod_fresh_potatoes_1792249994939.jpg',
-      storeId: 'shree-lakshmi-kirana',
-      storeName: 'Shree Lakshmi Kirana',
-    },
-    // 2. Banana (1 kg, ₹50, orig ₹60)
-    PRODUCTS.find((p) => p.id === 'slk-banana') || {
-      id: 'slk-banana',
-      name: 'Banana',
-      category: 'Fruits & Vegetables',
-      quantity: '1 kg',
-      price: 50,
-      originalPrice: 60,
-      image: '/src/assets/images/prod_ripe_bananas_1792249993435.jpg',
-      storeId: 'shree-lakshmi-kirana',
-      storeName: 'Shree Lakshmi Kirana',
-    },
-    // 3. Amul Taaza Milk (1 L, ₹68, orig ₹72)
-    PRODUCTS.find((p) => p.id === 'slk-amul-taaza-milk') || {
-      id: 'slk-amul-taaza-milk',
-      name: 'Amul Taaza Milk',
-      category: 'Dairy & Eggs',
-      quantity: '1 L',
-      price: 68,
-      originalPrice: 72,
-      image: '/src/assets/images/prod_milk_pouch_1792249995129.jpg',
-      storeId: 'shree-lakshmi-kirana',
-      storeName: 'Shree Lakshmi Kirana',
-    },
-    // 4. Fortune Sunflower Oil (1 L, ₹155, orig ₹170)
-    PRODUCTS.find((p) => p.id === 'slk-fortune-sunflower-oil') || {
-      id: 'slk-fortune-sunflower-oil',
-      name: 'Fortune Sunflower Oil',
-      category: 'Cooking Essentials',
-      quantity: '1 L',
-      price: 155,
-      originalPrice: 170,
-      image: '/src/assets/images/prod_fortune_oil_pack_1792254220066.jpg',
-      storeId: 'shree-lakshmi-kirana',
-      storeName: 'Shree Lakshmi Kirana',
-    },
-  ];
+  // Suggested products from the fulfilling store (Reliance Smart, Shree Lakshmi Kirana, etc.)
+  const suggestedProducts: Product[] = useMemo(() => {
+    const currentStoreId = store?.id || 'shree-lakshmi-kirana';
+    if (currentStoreId === 'reliance-smart') {
+      const rItems = [
+        PRODUCTS.find((p) => p.id === 'rs-potato'),
+        PRODUCTS.find((p) => p.id === 'rs-banana'),
+        PRODUCTS.find((p) => p.id === 'rs-amul-taaza-milk'),
+        PRODUCTS.find((p) => p.id === 'rs-fortune-sunflower-oil'),
+      ].filter(Boolean) as Product[];
+      if (rItems.length === 4) return rItems;
+    }
+
+    return [
+      PRODUCTS.find((p) => p.id === 'slk-potato'),
+      PRODUCTS.find((p) => p.id === 'slk-banana'),
+      PRODUCTS.find((p) => p.id === 'slk-amul-taaza-milk'),
+      PRODUCTS.find((p) => p.id === 'slk-fortune-sunflower-oil'),
+    ].filter(Boolean) as Product[];
+  }, [store]);
 
   const handleAddClick = (prod: Product) => {
     onAddToCart(prod);

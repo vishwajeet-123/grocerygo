@@ -16,6 +16,7 @@ import { StoreCoverBanner } from './StoreCoverBanner';
 import { StoreInformation } from './StoreInformation';
 import { StoreSidebar } from './StoreSidebar';
 import { StoreProductCard } from './StoreProductCard';
+import { InteractiveGoogleMap } from './InteractiveGoogleMap';
 import { Store, Product, CartItem, SortOption } from '../types';
 import { STORES } from '../data/stores';
 import { PRODUCTS } from '../data/products';
@@ -73,15 +74,16 @@ export const StoreDetailsPage: React.FC<StoreDetailsPageProps> = ({
   };
 
   // Products available in this store
-  // Primary store 'shree-lakshmi-kirana' has dedicated items; fallback adapts catalog for other stores
+  // Primary store and Reliance Smart have dedicated items; fallback adapts catalog with store-scoped IDs
   const storeRawProducts = useMemo(() => {
     const directMatches = PRODUCTS.filter((p) => p.storeId === currentStore.id);
     if (directMatches.length > 0) {
       return directMatches;
     }
-    // For other stores in demonstration, provide catalog items mapped to this store
-    return PRODUCTS.map((p) => ({
+    // For other stores, map catalog items with unique store-scoped IDs to prevent collision
+    return PRODUCTS.filter((p) => p.storeId === 'shree-lakshmi-kirana').map((p) => ({
       ...p,
+      id: `${currentStore.id}-${p.id}`,
       storeId: currentStore.id,
       storeName: currentStore.name,
       storeType: currentStore.type,
@@ -432,21 +434,22 @@ export const StoreDetailsPage: React.FC<StoreDetailsPageProps> = ({
             </div>
 
             {/* Modal Map Graphic */}
-            <div className="relative w-full h-80 bg-slate-100">
-              <img
-                src="/src/assets/images/mysuru_local_map_1792253010616.jpg"
-                alt="Mysuru local street map"
-                className="w-full h-full object-cover"
+            <div className="p-2 sm:p-4 bg-slate-50">
+              <InteractiveGoogleMap
+                center={{ lat: 12.3392, lng: 76.5927 }}
+                zoom={15}
+                height="320px"
+                markers={[
+                  {
+                    id: currentStore.id,
+                    title: currentStore.name,
+                    subtitle: currentStore.address || 'Hootagalli, Mysuru',
+                    position: { lat: 12.3392, lng: 76.5927 },
+                    type: 'store',
+                    badge: `${currentStore.name} (${currentStore.distance})`,
+                  },
+                ]}
               />
-              {/* Store Marker Pin */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                <span className="bg-emerald-600 text-white p-2 rounded-full shadow-2xl ring-4 ring-white animate-bounce">
-                  <StoreIcon className="w-5 h-5" />
-                </span>
-                <span className="bg-slate-900 text-white font-extrabold text-xs px-2.5 py-1 rounded-lg shadow-lg mt-1 whitespace-nowrap">
-                  {currentStore.name} ({currentStore.distance})
-                </span>
-              </div>
             </div>
 
             {/* Modal Footer with Live Directions info */}

@@ -13,6 +13,7 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import { PaymentPage } from './pages/PaymentPage';
 import { MyOrdersPage } from './pages/MyOrdersPage';
 import { OrderTrackingPage } from './pages/OrderTrackingPage';
+import { StoreOwnerDashboard } from './pages/StoreOwnerDashboard';
 import { CartDrawer } from './components/CartDrawer';
 import { SearchModal } from './components/SearchModal';
 import { LocationModal } from './components/LocationModal';
@@ -480,6 +481,17 @@ export default function App() {
   const displayedHomeProducts = useMemo(() => {
     return PRODUCTS.filter((p) => p.isFeatured).slice(0, 6);
   }, []);
+
+  // Phase 7: Store Owner Dashboard
+  if (currentPage === 'dashboard') {
+    return (
+      <StoreOwnerDashboard
+        onNavigateCustomerHome={() => handleNavigate('home')}
+        onNavigateCustomerStores={() => handleNavigate('stores')}
+        onNavigateCustomerOrders={() => handleNavigate('orders')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900">

@@ -257,6 +257,22 @@ export const Header: React.FC<HeaderProps> = ({
                     <div className="border-t border-slate-100 my-1"></div>
                     <button
                       type="button"
+                      onClick={() => {
+                        setIsAccountOpen(false);
+                        onNavigate('dashboard');
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-left font-bold"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Package className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Store Owner Portal</span>
+                      </div>
+                      <span className="text-[10px] bg-red-500 text-white font-bold px-1.5 py-0.2 rounded-full">
+                        5
+                      </span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setIsAccountOpen(false)}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 text-left"
                     >

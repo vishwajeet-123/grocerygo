@@ -11,7 +11,8 @@ export type AppPage =
   | 'payment'
   | 'orders'
   | 'tracking'
-  | 'about';
+  | 'about'
+  | 'dashboard';
 
 interface SecondaryNavigationProps {
   currentPage: AppPage;
@@ -149,6 +150,22 @@ export const SecondaryNavigation: React.FC<SecondaryNavigationProps> = ({
             {currentPage === 'about' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full" />
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('dashboard')}
+            className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ml-auto border ${
+              currentPage === 'dashboard'
+                ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200'
+            }`}
+          >
+            <Store className="w-3.5 h-3.5 text-emerald-600 group-hover:text-emerald-800" />
+            <span>Store Dashboard</span>
+            <span className="bg-red-500 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full leading-tight">
+              5
+            </span>
           </button>
 
         </div>

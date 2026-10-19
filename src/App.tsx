@@ -14,16 +14,20 @@ import { PaymentPage } from './pages/PaymentPage';
 import { MyOrdersPage } from './pages/MyOrdersPage';
 import { OrderTrackingPage } from './pages/OrderTrackingPage';
 import { StoreOwnerDashboard } from './pages/StoreOwnerDashboard';
+import { DeliveryPartnerDashboard } from './pages/DeliveryPartnerDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { AuthModal } from './components/AuthModal';
 import { CartDrawer } from './components/CartDrawer';
 import { SearchModal } from './components/SearchModal';
 import { LocationModal } from './components/LocationModal';
 import { Footer } from './components/Footer';
+import { authStorage, ordersApi, realtimeClient, UserSession } from './utils/api';
 
 import { PRODUCTS } from './data/products';
 import { STORES } from './data/stores';
 import { CATEGORIES } from './data/categories';
 import { INITIAL_ORDERS } from './data/orders';
-import { Product, CartItem, Store, Order } from './types';
+import { Product, CartItem, Store, Order, DeliveryLocation } from './types';
 import { SavedAddress } from './components/AddressSelector';
 import { DeliveryTimeOption } from './components/DeliveryTimeSelector';
 import { PaymentMethod } from './components/PaymentMethodSelector';
@@ -82,6 +86,53 @@ export default function App() {
   // Phase 6: Orders & Live Tracking state
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
   const [activeTrackingOrderId, setActiveTrackingOrderId] = useState<string>('ord-8492');
+
+  // Authentication & Multi-Role state
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    return (
+      authStorage.getUser() || {
+        id: 'usr-customer-1',
+        name: 'Vishwajeet Waghmare',
+        email: 'customer@grocerygo.in',
+        role: 'customer',
+        phone: '+91 98765 43210',
+      }
+    );
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [liveToast, setLiveToast] = useState<{ title: string; desc: string } | null>(null);
+
+  // Real-time synchronization with server
+  useEffect(() => {
+    ordersApi
+      .getAll()
+      .then((data) => {
+        if (data && data.length > 0) setOrders(data);
+      })
+      .catch(() => {});
+
+    const unsub = realtimeClient.subscribe((evt) => {
+      if (evt.type === 'order_created') {
+        const order = evt.payload.order;
+        setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id)]);
+        setLiveToast({
+          title: 'New Order Placed!',
+          desc: `Order #${order.orderNumber} for ${order.store.name} was successfully created.`,
+        });
+        setTimeout(() => setLiveToast(null), 5000);
+      } else if (evt.type === 'order_updated') {
+        const updated = evt.payload.order;
+        setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+        setLiveToast({
+          title: 'Order Status Updated',
+          desc: `Order #${updated.orderNumber} is now ${updated.status.replace('_', ' ').toUpperCase()}`,
+        });
+        setTimeout(() => setLiveToast(null), 5000);
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   // Shared Checkout & Payment state
   const [addresses, setAddresses] = useState<SavedAddress[]>([
@@ -363,8 +414,56 @@ export default function App() {
     setCouponDiscount(0);
   };
 
-  // Complete simulated order from fulfillingStore
-  const handleCompleteOrder = () => {
+  const handleLogout = () => {
+    authStorage.clear();
+    setCurrentUser(null);
+    setCurrentPage('home');
+  };
+
+  // Complete order via real backend database API with fallback
+  const handleCompleteOrder = async () => {
+    const distanceKm = fulfillingStore.distanceKm || 2.1;
+    const isRemote = distanceKm > 5;
+    const remoteSurcharge = isRemote ? Math.round((distanceKm - 5) * 3.5) : 0;
+    const deliveryFee = isRemote ? 25 + remoteSurcharge : (distanceKm > 2 ? 15 : 0);
+
+    const deliveryAddressObj: DeliveryLocation = {
+      id: selectedAddress.id,
+      name: selectedAddress.label,
+      address: `${selectedAddress.streetAddress}, Mysuru - ${selectedAddress.pincode}`,
+      landmark: selectedAddress.landmark,
+      lat: selectedAddress.label === 'College' ? 12.285 : 12.3375,
+      lng: selectedAddress.label === 'College' ? 76.645 : 76.598,
+      distanceKm,
+      estimatedMins: fulfillingStore.minDeliveryMins || 25,
+      isRemote,
+      localityType: isRemote ? 'remote_village' : 'hyperlocal',
+      deliveryFee,
+      areaTag: isRemote ? 'Remote Village Delivery' : 'Local Delivery',
+    };
+
+    try {
+      const created = await ordersApi.create({
+        storeId: fulfillingStore.id,
+        items: cartItems,
+        deliveryAddress: deliveryAddressObj,
+        paymentMethod,
+        deliveryInstructions,
+        couponCode,
+        couponDiscount,
+      });
+
+      setOrders((prev) => [created, ...prev.filter((o) => o.id !== created.id)]);
+      setActiveTrackingOrderId(created.id);
+      handleClearCart();
+      setCurrentPage('tracking');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    } catch (err: any) {
+      console.warn('Real order API call encountered error, using local transaction:', err);
+    }
+
+    // Local fallback transaction
     const newOrderId = `ord-${Date.now().toString().slice(-4)}`;
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newOrder: Order = {
@@ -373,26 +472,14 @@ export default function App() {
       createdAt: 'Just now',
       status: 'confirmed',
       store: fulfillingStore,
-      deliveryAddress: {
-        id: selectedAddress.id,
-        name: selectedAddress.label,
-        address: `${selectedAddress.streetAddress}, Mysuru - ${selectedAddress.pincode}`,
-        landmark: selectedAddress.landmark,
-        lat: selectedAddress.label === 'College' ? 12.285 : 12.3375,
-        lng: selectedAddress.label === 'College' ? 76.645 : 76.598,
-        distanceKm: fulfillingStore.distanceKm || 2.1,
-        estimatedMins: fulfillingStore.minDeliveryMins || 25,
-        isRemote: false,
-        localityType: 'hyperlocal',
-        deliveryFee: 0,
-        areaTag: 'Local Delivery',
-      },
+      deliveryAddress: deliveryAddressObj,
       items: [...cartItems],
       subtotal: itemTotal,
       packingFee: 10,
-      deliveryFee: 0,
+      deliveryFee,
+      remoteAreaSurcharge: remoteSurcharge,
       discount: couponDiscount,
-      totalAmount: Math.max(0, itemTotal + 10 - couponDiscount),
+      totalAmount: Math.max(0, itemTotal + 10 + deliveryFee - couponDiscount),
       paymentMethod,
       paymentStatus: 'paid',
       timeline: [
@@ -438,16 +525,16 @@ export default function App() {
         },
       ],
       deliveryPartner: {
-        id: 'dp-ramesh',
-        name: 'Ramesh Kumar',
-        phone: '+91 94481 23456',
+        id: 'dp-ravi-01',
+        name: 'Ravi Kumar',
+        phone: '+91 98765 12345',
         rating: 4.9,
-        totalDeliveries: 1420,
-        vehicleType: 'Hero Electric Optima',
-        vehicleNumber: 'KA-09-EM-4821',
-        photoUrl: '/src/assets/images/store_local_kirana_1792249945848.jpg',
-        currentLat: 12.338,
-        currentLng: 76.595,
+        totalDeliveries: 342,
+        vehicleType: 'Hero Splendor Plus',
+        vehicleNumber: 'KA-09-ER-4321',
+        photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        currentLat: 12.3385,
+        currentLng: 76.5992,
       },
       deliveryOtp: `${Math.floor(1000 + Math.random() * 9000)}`,
       estimatedDeliveryTime: `${fulfillingStore.minDeliveryMins || 25} mins`,
@@ -482,13 +569,33 @@ export default function App() {
     return PRODUCTS.filter((p) => p.isFeatured).slice(0, 6);
   }, []);
 
-  // Phase 7: Store Owner Dashboard
+  // Multi-Role Dashboards
   if (currentPage === 'dashboard') {
     return (
       <StoreOwnerDashboard
         onNavigateCustomerHome={() => handleNavigate('home')}
         onNavigateCustomerStores={() => handleNavigate('stores')}
         onNavigateCustomerOrders={() => handleNavigate('orders')}
+      />
+    );
+  }
+
+  if (currentPage === 'delivery') {
+    return (
+      <DeliveryPartnerDashboard
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onNavigateCustomerHome={() => handleNavigate('home')}
+      />
+    );
+  }
+
+  if (currentPage === 'admin') {
+    return (
+      <AdminDashboard
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onNavigateCustomerHome={() => handleNavigate('home')}
       />
     );
   }
@@ -513,6 +620,9 @@ export default function App() {
             if (currentPage === 'home') setCurrentPage('categories');
           }
         }}
+        currentUser={currentUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* 2. Secondary Navigation Bar */}
@@ -520,6 +630,8 @@ export default function App() {
         currentPage={currentPage}
         onNavigate={handleNavigate}
         activeOrderCount={activeOrderCount}
+        userRole={currentUser?.role}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
 
       {/* Page Body */}
@@ -817,6 +929,41 @@ export default function App() {
           <span>{storeToast}</span>
         </div>
       )}
+
+      {/* Real-time Order & Dispatch Live Toast */}
+      {liveToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+          <div>
+            <p className="text-xs font-bold text-white">{liveToast.title}</p>
+            <p className="text-[11px] text-slate-300">{liveToast.desc}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLiveToast(null)}
+            className="ml-2 text-slate-400 hover:text-white p-1 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Multi-Role Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(user) => {
+          setCurrentUser(user);
+          if (user.role === 'store_owner') {
+            setCurrentPage('dashboard');
+          } else if (user.role === 'delivery_partner') {
+            setCurrentPage('delivery');
+          } else if (user.role === 'admin') {
+            setCurrentPage('admin');
+          }
+        }}
+        stores={STORES}
+      />
     </div>
   );
 }

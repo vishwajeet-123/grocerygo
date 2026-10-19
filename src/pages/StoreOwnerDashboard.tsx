@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ShoppingBag,
   IndianRupee,
@@ -43,6 +43,7 @@ import {
 import { STORES } from '../data/stores';
 import { PRODUCTS } from '../data/products';
 import { Product, Store as StoreType } from '../types';
+import { ordersApi, storesApi, subscribeToRealtime, OrderModel } from '../utils/api';
 
 export type DashboardTab =
   | 'dashboard'
@@ -319,6 +320,117 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
   // Sound toggle state
   const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(true);
 
+  // Real-time synchronization & database loading
+  useEffect(() => {
+    // 1. Fetch store-specific real orders from database
+    ordersApi
+      .getStoreOrders(currentStore.id)
+      .then((backendOrders) => {
+        if (backendOrders && backendOrders.length > 0) {
+          const mapped: IncomingOrder[] = backendOrders.map((bo: any) => ({
+            id: bo.id,
+            orderNumber: bo.orderNumber,
+            customerName: bo.customerName,
+            customerPhone: bo.customerPhone,
+            locality: bo.deliveryAddress.locality || bo.deliveryAddress.streetAddress,
+            itemCount: bo.items.reduce((sum: number, item: any) => sum + item.count, 0),
+            itemSummary: bo.items.map((i: any) => `${i.name} (${i.quantity})`).join(', '),
+            timeAgo: 'Recently',
+            totalAmount: bo.totalAmount,
+            paymentMethod: bo.paymentMethod === 'cod' ? ('COD' as const) : ('Online' as const),
+            status:
+              bo.storeAcceptanceStatus === 'awaiting_acceptance'
+                ? ('new' as const)
+                : (bo.storeAcceptanceStatus as any),
+            image: bo.items[0]?.image || '/src/assets/images/prod_atta_bag_1792249996274.jpg',
+            items: bo.items.map((i: any) => ({
+              name: i.name,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              count: i.count,
+            })),
+          }));
+          setOrdersList(mapped);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Fetch real products for selected store
+    storesApi
+      .getProducts(currentStore.id)
+      .then((res) => {
+        if (res && res.products && res.products.length > 0) {
+          setProductsCatalog(res.products as any);
+        }
+      })
+      .catch(() => {});
+
+    // 3. Subscribe to real-time events for this store
+    const unsubscribe = subscribeToRealtime(
+      (event) => {
+        if (event.type === 'order_received' && event.payload?.order) {
+          const bo: OrderModel = event.payload.order;
+          if (bo.storeId === currentStore.id) {
+            const newIncoming: IncomingOrder = {
+              id: bo.id,
+              orderNumber: bo.orderNumber,
+              customerName: bo.customerName,
+              customerPhone: bo.customerPhone,
+              locality: bo.deliveryAddress.locality || bo.deliveryAddress.streetAddress,
+              itemCount: bo.items.reduce((sum, item) => sum + item.count, 0),
+              itemSummary: bo.items.map((i) => `${i.name} (${i.quantity})`).join(', '),
+              timeAgo: 'Just now',
+              totalAmount: bo.totalAmount,
+              paymentMethod: bo.paymentMethod === 'cod' ? 'COD' : 'Online',
+              status: 'new',
+              image: bo.items[0]?.image || '/src/assets/images/prod_atta_bag_1792249996274.jpg',
+              items: bo.items.map((i) => ({
+                name: i.name,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+                count: i.count,
+              })),
+            };
+
+            setOrdersList((prev) => [newIncoming, ...prev.filter((o) => o.id !== bo.id)]);
+            setUnreadNotifications((prev) => prev + 1);
+            setNotifications((prev) => [
+              {
+                id: `notif-${Date.now()}`,
+                title: `Incoming Order ${bo.orderNumber}`,
+                desc: `${bo.customerName} ordered ${bo.items.length} items (₹${bo.totalAmount})`,
+                time: 'Just now',
+                unread: true,
+                type: 'order',
+              },
+              ...prev,
+            ]);
+
+            showToast(`🔔 Real-Time Alert: New incoming order ${bo.orderNumber} from ${bo.customerName}!`);
+
+            // Sound chime
+            if (soundAlertsEnabled) {
+              try {
+                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+                osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+                osc.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+              } catch {}
+            }
+          }
+        }
+      },
+      { storeId: currentStore.id }
+    );
+
+    return () => unsubscribe();
+  }, [currentStore.id, soundAlertsEnabled]);
+
   // Dynamic counts
   const pendingOrders = useMemo(() => {
     return ordersList.filter((o) => o.status === 'new');
@@ -328,7 +440,7 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
     return ordersList.filter((o) => o.status === 'accepted' || o.status === 'preparing');
   }, [ordersList]);
 
-  // Handle Accept Order
+  // Handle Accept Order (Real Database API)
   const handleAcceptOrder = (order: IncomingOrder, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setOrdersList((prev) =>
@@ -338,19 +450,26 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
     if (selectedOrderForModal?.id === order.id) {
       setSelectedOrderForModal({ ...order, status: 'accepted' });
     }
+    ordersApi.acceptOrder(order.id).catch((err) => {
+      console.warn('Accept order API notice:', err);
+    });
   };
 
-  // Handle Confirm Reject Order
+  // Handle Confirm Reject Order (Real Database API)
   const handleConfirmReject = () => {
     if (!orderToReject) return;
     setOrdersList((prev) =>
       prev.map((o) => (o.id === orderToReject.id ? { ...o, status: 'rejected' } : o))
     );
     showToast(`Order ${orderToReject.orderNumber} rejected: ${rejectReason}`);
+    const rejectedId = orderToReject.id;
     setOrderToReject(null);
-    if (selectedOrderForModal?.id === orderToReject.id) {
+    if (selectedOrderForModal?.id === rejectedId) {
       setSelectedOrderForModal(null);
     }
+    ordersApi.rejectOrder(rejectedId, rejectReason).catch((err) => {
+      console.warn('Reject order API notice:', err);
+    });
   };
 
   // Handle Quick Restock

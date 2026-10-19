@@ -12,18 +12,24 @@ export type AppPage =
   | 'orders'
   | 'tracking'
   | 'about'
-  | 'dashboard';
+  | 'dashboard'
+  | 'delivery'
+  | 'admin';
 
 interface SecondaryNavigationProps {
   currentPage: AppPage;
   onNavigate: (page: AppPage) => void;
   activeOrderCount?: number;
+  userRole?: 'customer' | 'store_owner' | 'delivery_partner' | 'admin';
+  onOpenAuthModal?: () => void;
 }
 
 export const SecondaryNavigation: React.FC<SecondaryNavigationProps> = ({
   currentPage,
   onNavigate,
   activeOrderCount = 2,
+  userRole = 'customer',
+  onOpenAuthModal,
 }) => {
   return (
     <nav className="bg-white border-b border-slate-100 py-1.5 shadow-2xs">
@@ -152,21 +158,46 @@ export const SecondaryNavigation: React.FC<SecondaryNavigationProps> = ({
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate('dashboard')}
-            className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ml-auto border ${
-              currentPage === 'dashboard'
-                ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
-                : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200'
-            }`}
-          >
-            <Store className="w-3.5 h-3.5 text-emerald-600 group-hover:text-emerald-800" />
-            <span>Store Dashboard</span>
-            <span className="bg-red-500 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full leading-tight">
-              5
-            </span>
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('dashboard')}
+              className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 border ${
+                currentPage === 'dashboard'
+                  ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                  : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200'
+              }`}
+            >
+              <Store className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Store Owner</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('delivery')}
+              className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 border ${
+                currentPage === 'delivery'
+                  ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200'
+              }`}
+            >
+              <Truck className="w-3.5 h-3.5 text-amber-600" />
+              <span>Delivery Partner</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('admin')}
+              className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 border ${
+                currentPage === 'admin'
+                  ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                  : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border-purple-200'
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5 text-purple-600" />
+              <span>Admin Center</span>
+            </button>
+          </div>
 
         </div>
       </div>

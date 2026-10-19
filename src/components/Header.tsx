@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShoppingCart, Leaf, MapPin, Search, ChevronDown, User, Check, Package, Map, LogOut, Heart, X } from 'lucide-react';
 
 import { AppPage } from './SecondaryNavigation';
+import { UserSession } from '../utils/api';
 
 interface HeaderProps {
   cartCount: number;
@@ -14,6 +15,9 @@ interface HeaderProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onSearchSubmit?: (e?: React.FormEvent) => void;
+  currentUser?: UserSession | null;
+  onOpenAuthModal?: () => void;
+  onLogout?: () => void;
 }
 
 const MYSURU_LOCALITIES = [
@@ -37,6 +41,9 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   setSearchQuery,
   onSearchSubmit,
+  currentUser,
+  onOpenAuthModal,
+  onLogout,
 }) => {
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -200,29 +207,40 @@ export const Header: React.FC<HeaderProps> = ({
                 aria-expanded={isAccountOpen}
               >
                 <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-semibold text-xs flex items-center justify-center border border-emerald-300 shrink-0">
-                  V
+                  {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'V'}
                 </div>
-                <span className="hidden sm:inline text-xs font-semibold text-slate-800">
-                  Vishwajeet
-                </span>
+                <div className="hidden sm:flex flex-col text-left">
+                  <span className="text-xs font-semibold text-slate-800 leading-tight">
+                    {currentUser?.name || 'Vishwajeet'}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">
+                    {currentUser?.role ? currentUser.role.replace('_', ' ') : 'Customer'}
+                  </span>
+                </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:inline" />
               </button>
 
               {/* Account Dropdown */}
               {isAccountOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-50 text-left">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-50 text-left">
                   <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                    <p className="text-xs font-bold text-slate-900">Vishwajeet Waghmare</p>
-                    <p className="text-[11px] text-slate-500">vishwajeetwagmare2005@gmail.com</p>
+                    <p className="text-xs font-bold text-slate-900">{currentUser?.name || 'Vishwajeet Waghmare'}</p>
+                    <p className="text-[11px] text-slate-500">{currentUser?.email || 'customer@grocerygo.in'}</p>
+                    <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      Active: {currentUser?.role ? currentUser.role.replace('_', ' ').toUpperCase() : 'CUSTOMER'}
+                    </span>
                   </div>
                   <div className="space-y-0.5 text-xs text-slate-700">
                     <button
                       type="button"
-                      onClick={() => setIsAccountOpen(false)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-left"
+                      onClick={() => {
+                        setIsAccountOpen(false);
+                        onOpenAuthModal?.();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/60 text-emerald-800 hover:bg-emerald-100 text-left font-bold"
                     >
-                      <User className="w-3.5 h-3.5 text-slate-400" />
-                      <span>My Profile</span>
+                      <User className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Switch Role / Sign In</span>
                     </button>
                     <button
                       type="button"
@@ -235,25 +253,6 @@ export const Header: React.FC<HeaderProps> = ({
                       <Package className="w-3.5 h-3.5 text-emerald-700" />
                       <span>My Orders & Reorders</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAccountOpen(false);
-                        setIsLocationOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-left"
-                    >
-                      <Map className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Saved Addresses (Mysuru)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsAccountOpen(false)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-left"
-                    >
-                      <Heart className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Favorite Kirana Stores</span>
-                    </button>
                     <div className="border-t border-slate-100 my-1"></div>
                     <button
                       type="button"
@@ -261,7 +260,7 @@ export const Header: React.FC<HeaderProps> = ({
                         setIsAccountOpen(false);
                         onNavigate('dashboard');
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-left font-bold"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-emerald-50 text-emerald-800 text-left font-bold"
                     >
                       <div className="flex items-center gap-2">
                         <Package className="w-3.5 h-3.5 text-emerald-700" />
@@ -273,11 +272,37 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsAccountOpen(false)}
+                      onClick={() => {
+                        setIsAccountOpen(false);
+                        onNavigate('delivery');
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-amber-50 text-amber-900 text-left font-bold"
+                    >
+                      <Package className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Delivery Partner Console</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountOpen(false);
+                        onNavigate('admin');
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-purple-50 text-purple-900 text-left font-bold"
+                    >
+                      <User className="w-3.5 h-3.5 text-purple-700" />
+                      <span>Super Admin Center</span>
+                    </button>
+                    <div className="border-t border-slate-100 my-1"></div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountOpen(false);
+                        onLogout?.();
+                      }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 text-left"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span>Sign Out (Demo)</span>
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 </div>

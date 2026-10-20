@@ -3,7 +3,7 @@ import path from 'path';
 import { STORES } from '../data/stores.js';
 import { PRODUCTS } from '../data/products.js';
 import { INITIAL_ORDERS, DEFAULT_SERVICE_AREA_CONFIG, MYSURU_LOCALITIES } from '../data/orders.js';
-import { Store, Product, Order, DeliveryPartner, ServiceAreaConfig, DeliveryLocation } from '../types.js';
+import { Store, Product, Order, DeliveryPartner, ServiceAreaConfig, DeliveryLocation, RemoteAreaRequest } from '../types.js';
 
 export type UserRole = 'customer' | 'store_owner' | 'delivery_partner' | 'admin';
 
@@ -49,6 +49,7 @@ export interface DatabaseSchema {
   deliveryPartners: DeliveryPartner[];
   config: PlatformConfig;
   disputes: DisputeRecord[];
+  remoteAreaRequests: RemoteAreaRequest[];
 }
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
@@ -173,6 +174,43 @@ function getInitialDatabase(): DatabaseSchema {
     },
   ];
 
+  const seedRemoteRequests: RemoteAreaRequest[] = [
+    {
+      id: 'req-remote-01',
+      customerName: 'Anil Gowda',
+      customerPhone: '+91 94481 99881',
+      address: 'Main Road, Bilikere Village, Hunsur Taluk - 571103',
+      locality: 'Bilikere Village',
+      district: 'Mysuru',
+      state: 'Karnataka',
+      pincode: '571103',
+      lat: 12.3510,
+      lng: 76.4320,
+      distanceToNearestStoreKm: 18.4,
+      nearestStoreName: 'Reliance Smart',
+      notes: 'Requesting weekend delivery of fresh vegetables and cooking essentials for farmer families.',
+      status: 'pending',
+      createdAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+    },
+    {
+      id: 'req-remote-02',
+      customerName: 'Pooja Hegde',
+      customerPhone: '+91 98862 33445',
+      address: 'Grama Panchayath Road, Bannur Rural - 571101',
+      locality: 'Bannur Rural',
+      district: 'Mysuru',
+      state: 'Karnataka',
+      pincode: '571101',
+      lat: 12.3320,
+      lng: 76.8610,
+      distanceToNearestStoreKm: 27.5,
+      nearestStoreName: 'D-Mart',
+      notes: 'No quick grocery delivery available here. 40+ households ready to order daily essentials.',
+      status: 'reviewed',
+      createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+    },
+  ];
+
   return {
     users: seedUsers,
     stores: STORES,
@@ -187,6 +225,7 @@ function getInitialDatabase(): DatabaseSchema {
       announcement: 'Serving all neighborhoods and remote rural hamlets across Mysuru district with standard & express delivery.',
     },
     disputes: seedDisputes,
+    remoteAreaRequests: seedRemoteRequests,
   };
 }
 
@@ -201,6 +240,17 @@ export function getDb(): DatabaseSchema {
     try {
       const content = fs.readFileSync(DB_FILE, 'utf-8');
       dbState = JSON.parse(content);
+      // Migration helpers
+      if (!dbState!.remoteAreaRequests) {
+        dbState!.remoteAreaRequests = [];
+      }
+      // Ensure all stores have coordinates and latest regional stores
+      if (dbState!.stores) {
+        dbState!.stores = STORES.map((updatedStore) => {
+          const existing = dbState!.stores.find((s) => s.id === updatedStore.id);
+          return existing ? { ...updatedStore, ...existing, lat: updatedStore.lat, lng: updatedStore.lng, maxDeliveryRadiusKm: updatedStore.maxDeliveryRadiusKm } : updatedStore;
+        });
+      }
       return dbState!;
     } catch (err) {
       console.error('Error reading db file, regenerating fresh database:', err);

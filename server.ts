@@ -10,6 +10,7 @@ import orderRoutes from './src/server/routes/orderRoutes.js';
 import deliveryRoutes from './src/server/routes/deliveryRoutes.js';
 import adminRoutes from './src/server/routes/adminRoutes.js';
 import paymentRoutes from './src/server/routes/paymentRoutes.js';
+import locationRoutes from './src/server/routes/locationRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,6 +72,7 @@ async function startServer() {
   app.use('/api/delivery', deliveryRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/payment', paymentRoutes);
+  app.use('/api/location', locationRoutes);
 
   // Health check
   app.get('/api/health', (_req, res) => {

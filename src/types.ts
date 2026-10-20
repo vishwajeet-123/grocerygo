@@ -28,6 +28,43 @@ export interface Store {
   deliveryFee?: string;
   deliveryArea?: string;
   hours?: string;
+  lat?: number;
+  lng?: number;
+  maxDeliveryRadiusKm?: number;
+  pincode?: string;
+  locality?: string;
+  district?: string;
+  state?: string;
+}
+
+export interface NearbyLocality {
+  name: string;
+  type: 'village' | 'town' | 'locality' | 'suburb' | 'neighborhood';
+  district?: string;
+  state?: string;
+  pincode?: string;
+  lat: number;
+  lng: number;
+  distanceKm: number;
+  registeredStoresCount: number;
+}
+
+export interface RemoteAreaRequest {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  address: string;
+  locality?: string;
+  district?: string;
+  state?: string;
+  pincode?: string;
+  lat: number;
+  lng: number;
+  distanceToNearestStoreKm?: number;
+  nearestStoreName?: string;
+  notes?: string;
+  status: 'pending' | 'reviewed' | 'service_expanded' | 'rejected';
+  createdAt: string;
 }
 
 export interface Product {

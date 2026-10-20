@@ -18,17 +18,8 @@ interface HeaderProps {
   currentUser?: UserSession | null;
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
+  onOpenLocationModal?: () => void;
 }
-
-const MYSURU_LOCALITIES = [
-  { name: 'Hootagalli', detail: 'Hootagalli, Mysuru, Karnataka', tag: 'Selected' },
-  { name: 'Gokulam 3rd Stage', detail: 'Gokulam, Mysuru, Karnataka' },
-  { name: 'Jayalakshmipuram', detail: 'Jayalakshmipuram, Mysuru, Karnataka' },
-  { name: 'Kuvempunagar', detail: 'Kuvempunagar, Mysuru, Karnataka' },
-  { name: 'Saraswathipuram', detail: 'Saraswathipuram, Mysuru, Karnataka' },
-  { name: 'Vijayanagar 2nd Stage', detail: 'Vijayanagar, Mysuru, Karnataka' },
-  { name: 'Hebbal 1st Stage', detail: 'Hebbal, Mysuru, Karnataka' },
-];
 
 export const Header: React.FC<HeaderProps> = ({
   cartCount,
@@ -44,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onOpenAuthModal,
   onLogout,
+  onOpenLocationModal,
 }) => {
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -125,59 +117,30 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Right section: Location + Cart + Account */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             
-            {/* 1. Location Selector */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
+            {/* 1. Interactive Location Picker Trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenLocationModal) {
+                  onOpenLocationModal();
+                } else {
                   setIsLocationOpen(!isLocationOpen);
-                  setIsAccountOpen(false);
-                }}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 cursor-pointer"
-                aria-expanded={isLocationOpen}
-                title="Change delivery location"
-              >
-                <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="max-w-[120px] lg:max-w-[150px] truncate text-slate-800 font-medium">
-                  {selectedLocation.includes('Mysuru') ? selectedLocation : `${selectedLocation}, Mysuru`}
+                }
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-900 transition-all border border-slate-200/80 hover:border-emerald-300 shadow-2xs cursor-pointer group"
+              title="Change delivery location & open interactive map"
+            >
+              <div className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <MapPin className="w-3 h-3 text-inherit" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] text-slate-400 font-medium leading-none">Deliver to:</span>
+                <span className="max-w-[130px] sm:max-w-[180px] lg:max-w-[220px] truncate font-bold text-slate-900 leading-tight">
+                  {selectedLocation.split(',')[0] || selectedLocation}
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              </button>
-
-              {/* Location Dropdown Modal */}
-              {isLocationOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-50 text-left">
-                  <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                    <p className="text-xs font-semibold text-slate-900">Delivery in Mysuru, Karnataka</p>
-                    <p className="text-[11px] text-slate-500">Supermarkets & Kirana shops nearby</p>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto space-y-1">
-                    {MYSURU_LOCALITIES.map((loc) => {
-                      const isSel = selectedLocation.includes(loc.name);
-                      return (
-                        <button
-                          key={loc.name}
-                          type="button"
-                          onClick={() => {
-                            setSelectedLocation(loc.detail);
-                            setIsLocationOpen(false);
-                          }}
-                          className={`w-full flex items-start justify-between px-3 py-2 rounded-lg text-xs text-left transition-colors cursor-pointer ${
-                            isSel ? 'bg-emerald-50 text-emerald-900 font-semibold' : 'text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div>
-                            <span className="block font-medium">{loc.name}</span>
-                            <span className="text-[10px] text-slate-400 font-normal">{loc.detail}</span>
-                          </div>
-                          {isSel && <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-700 shrink-0 ml-0.5" />
+            </button>
 
             {/* 2. Shopping cart icon with badge */}
             <button

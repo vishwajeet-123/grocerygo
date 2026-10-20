@@ -398,3 +398,77 @@ export interface OrderModel {
   [key: string]: any;
 }
 
+// 7. Location & Remote Delivery API
+export const locationApi = {
+  async getNearbyStores(
+    lat: number,
+    lng: number,
+    radiusKm: number = 25,
+    type: string = 'all'
+  ): Promise<{
+    selectedCoordinates: { lat: number; lng: number };
+    requestedRadiusKm: number;
+    totalStoresFound: number;
+    deliveringStoresCount: number;
+    hasDeliveringStores: boolean;
+    nearestStore: { name: string; distanceKm: number; isDeliveryEligible: boolean } | null;
+    stores: any[];
+    surroundingLocalities: any[];
+    serviceConfig: any;
+  }> {
+    return request<any>(
+      `/api/location/nearby-stores?lat=${lat}&lng=${lng}&radius=${radiusKm}&type=${type}`
+    );
+  },
+
+  async geocode(query: string): Promise<{ query: string; count: number; results: any[] }> {
+    return request<any>(`/api/location/geocode?q=${encodeURIComponent(query)}`);
+  },
+
+  async reverseGeocode(
+    lat: number,
+    lng: number
+  ): Promise<{
+    address: string;
+    locality: string;
+    district: string;
+    state: string;
+    pincode: string;
+    lat: number;
+    lng: number;
+    isRemote: boolean;
+  }> {
+    return request<any>(`/api/location/geocode?lat=${lat}&lng=${lng}`);
+  },
+
+  async submitRemoteRequest(data: {
+    customerName?: string;
+    customerPhone?: string;
+    address: string;
+    locality?: string;
+    district?: string;
+    state?: string;
+    pincode?: string;
+    lat: number;
+    lng: number;
+    notes?: string;
+  }): Promise<{ success: boolean; message: string; request: any }> {
+    return request<any>('/api/location/remote-request', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getRemoteRequests(): Promise<any[]> {
+    return request<any[]>('/api/location/remote-requests');
+  },
+
+  async updateRemoteRequest(id: string, status: string): Promise<any> {
+    return request<any>(`/api/location/remote-requests/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+};
+
+

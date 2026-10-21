@@ -18,7 +18,7 @@ import {
   HelpCircle,
   Lock,
 } from 'lucide-react';
-import { adminApi, UserSession, storesApi } from '../utils/api';
+import { adminApi, UserSession, storesApi, locationApi } from '../utils/api';
 import { Store } from '../types';
 
 interface AdminDashboardProps {
@@ -32,7 +32,7 @@ export function AdminDashboard({
   onLogout,
   onNavigateCustomerHome,
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'users' | 'stores' | 'disputes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'stores' | 'users' | 'disputes' | 'remote_requests'>('overview');
   const [overview, setOverview] = useState<any>(null);
   const [config, setConfig] = useState<any>({
     hyperlocalMaxKm: 5,
@@ -46,6 +46,7 @@ export function AdminDashboard({
   const [users, setUsers] = useState<UserSession[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [disputes, setDisputes] = useState<any[]>([]);
+  const [remoteRequests, setRemoteRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
@@ -58,12 +59,13 @@ export function AdminDashboard({
   const loadData = async () => {
     try {
       setLoading(true);
-      const [ov, cfg, usr, str, disp] = await Promise.all([
+      const [ov, cfg, usr, str, disp, reqs] = await Promise.all([
         adminApi.getOverview().catch(() => null),
         adminApi.getConfig().catch(() => null),
         adminApi.getUsers().catch(() => []),
         storesApi.getAll().catch(() => []),
         adminApi.getDisputes().catch(() => []),
+        locationApi.getRemoteRequests().catch(() => []),
       ]);
 
       if (ov) setOverview(ov);
@@ -71,6 +73,7 @@ export function AdminDashboard({
       setUsers(usr);
       setStores(str);
       setDisputes(disp);
+      setRemoteRequests(reqs || []);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -238,6 +241,17 @@ export function AdminDashboard({
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" /> Disputes ({disputes.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('remote_requests')}
+              className={`px-4 py-2 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-2 ${
+                activeTab === 'remote_requests'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5 text-emerald-500" /> Remote Requests ({remoteRequests.length})
             </button>
           </div>
 
@@ -569,6 +583,115 @@ export function AdminDashboard({
                         </button>
                       </div>
                     )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 6: Remote Area Delivery Demand Requests */}
+        {activeTab === 'remote_requests' && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Remote Area Delivery Demand Requests</h2>
+                <p className="text-xs text-slate-500">
+                  Customer requests from unserviced villages and remote locations across Karnataka & India
+                </p>
+              </div>
+              <span className="text-xs font-bold bg-purple-50 text-purple-700 px-3 py-1 rounded-full border border-purple-200">
+                {remoteRequests.length} Requests Logged
+              </span>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {remoteRequests.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs">
+                  No remote area demand requests recorded yet.
+                </div>
+              ) : (
+                remoteRequests.map((req) => (
+                  <div key={req.id} className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-sm text-slate-900">{req.locality}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          req.status === 'service_expanded'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : req.status === 'reviewed'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {req.status?.replace('_', ' ').toUpperCase()}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                          Coordinates: [{req.lat?.toFixed(4)}, {req.lng?.toFixed(4)}]
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-700 font-medium">
+                        Address: {req.address}
+                      </p>
+
+                      <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+                        <span>Customer: <strong>{req.customerName}</strong> ({req.customerPhone})</span>
+                        <span>Nearest Store: <strong>{req.nearestStoreName}</strong> ({req.distanceToNearestStoreKm} km away)</span>
+                        <span>Date: {new Date(req.createdAt).toLocaleDateString()}</span>
+                      </div>
+
+                      {req.notes && (
+                        <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 italic">
+                          "{req.notes}"
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
+                      {req.status !== 'service_expanded' && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await fetch(`/api/location/remote-requests/${req.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: 'service_expanded' }),
+                              });
+                              showToast(`Service area configured for ${req.locality}!`);
+                              loadData();
+                            } catch (e) {
+                              alert('Failed to update request');
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer shadow-xs"
+                        >
+                          Expand Service
+                        </button>
+                      )}
+
+                      {req.status === 'pending' && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await fetch(`/api/location/remote-requests/${req.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: 'reviewed' }),
+                              });
+                              showToast(`Request marked as reviewed.`);
+                              loadData();
+                            } catch (e) {
+                              alert('Failed to update request');
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                        >
+                          Mark Reviewed
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
               )}

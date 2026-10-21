@@ -82,6 +82,33 @@ export default function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('#123, 5th Cross, Hootagalli, Mysuru - 570018');
+  const [selectedLocationObj, setSelectedLocationObj] = useState<DeliveryLocation>(() => ({
+    id: 'loc-default',
+    name: 'Hootagalli',
+    address: '#123, 5th Cross, Hootagalli, Mysuru - 570018',
+    landmark: 'Mysuru, Karnataka',
+    lat: 12.3392,
+    lng: 76.5927,
+    distanceKm: 0.8,
+    estimatedMins: 20,
+    isRemote: false,
+    localityType: 'hyperlocal',
+    deliveryFee: 0,
+    areaTag: 'Local Delivery',
+  }));
+
+  const handleSelectLocation = (addressText: string, locObj?: DeliveryLocation) => {
+    setSelectedLocation(addressText);
+    if (locObj) {
+      setSelectedLocationObj(locObj);
+    } else {
+      setSelectedLocationObj((prev) => ({
+        ...prev,
+        address: addressText,
+        name: addressText.split(',')[0],
+      }));
+    }
+  };
 
   // Phase 6: Orders & Live Tracking state
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
@@ -422,20 +449,35 @@ export default function App() {
 
   // Complete order via real backend database API with fallback
   const handleCompleteOrder = async () => {
-    const distanceKm = fulfillingStore.distanceKm || 2.1;
+    const customerLat = selectedLocationObj.lat || (selectedAddress.label === 'College' ? 12.285 : 12.3375);
+    const customerLng = selectedLocationObj.lng || (selectedAddress.label === 'College' ? 76.645 : 76.598);
+    const storeLat = fulfillingStore.lat ?? 12.3392;
+    const storeLng = fulfillingStore.lng ?? 76.5927;
+
+    const dLat = ((customerLat - storeLat) * Math.PI) / 180;
+    const dLon = ((customerLng - storeLng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((storeLat * Math.PI) / 180) *
+        Math.cos((customerLat * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const straightDist = Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+    const roadFactor = straightDist < 5 ? 1.25 : straightDist < 20 ? 1.3 : 1.35;
+    const distanceKm = Math.round(straightDist * roadFactor * 10) / 10;
     const isRemote = distanceKm > 5;
     const remoteSurcharge = isRemote ? Math.round((distanceKm - 5) * 3.5) : 0;
     const deliveryFee = isRemote ? 25 + remoteSurcharge : (distanceKm > 2 ? 15 : 0);
 
     const deliveryAddressObj: DeliveryLocation = {
       id: selectedAddress.id,
-      name: selectedAddress.label,
-      address: `${selectedAddress.streetAddress}, Mysuru - ${selectedAddress.pincode}`,
-      landmark: selectedAddress.landmark,
-      lat: selectedAddress.label === 'College' ? 12.285 : 12.3375,
-      lng: selectedAddress.label === 'College' ? 76.645 : 76.598,
+      name: selectedAddress.label || selectedLocationObj.name,
+      address: selectedLocation || `${selectedAddress.streetAddress}, Mysuru - ${selectedAddress.pincode}`,
+      landmark: selectedAddress.landmark || selectedLocationObj.landmark,
+      lat: customerLat,
+      lng: customerLng,
       distanceKm,
-      estimatedMins: fulfillingStore.minDeliveryMins || 25,
+      estimatedMins: Math.max(15, Math.round((distanceKm / 28) * 60) + 10),
       isRemote,
       localityType: isRemote ? 'remote_village' : 'hyperlocal',
       deliveryFee,
@@ -623,6 +665,7 @@ export default function App() {
         currentUser={currentUser}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
+        onOpenLocationModal={() => setIsLocationModalOpen(true)}
       />
 
       {/* 2. Secondary Navigation Bar */}
@@ -703,6 +746,7 @@ export default function App() {
             onContinueToPayment={() => handleNavigate('payment')}
             onSelectStore={handleSelectStore}
             stores={STORES}
+            deliveryLocationObj={selectedLocationObj}
           />
         ) : currentPage === 'payment' ? (
           /* PHASE 5: Screen 2 — Payment (Payment Method Selection & UPI) */
@@ -799,6 +843,12 @@ export default function App() {
 
             {/* Nearby Stores */}
             <NearbyStores
+              customerLocation={{
+                lat: selectedLocationObj.lat,
+                lng: selectedLocationObj.lng,
+                address: selectedLocation,
+              }}
+              onOpenLocationModal={() => setIsLocationModalOpen(true)}
               onStoreSelected={(store: Store) => {
                 handleSelectStore(store.id);
                 setCurrentPage('stores');
@@ -871,7 +921,12 @@ export default function App() {
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
         selectedLocation={selectedLocation}
-        onSelectLocation={setSelectedLocation}
+        onSelectLocation={handleSelectLocation}
+        onSelectStore={(storeId) => {
+          handleSelectStore(storeId);
+          setCurrentPage('stores');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
 
       {/* About GroceryGo Modal */}

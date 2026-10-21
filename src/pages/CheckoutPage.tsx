@@ -6,7 +6,7 @@ import { DeliveryInstructions } from '../components/DeliveryInstructions';
 import { DeliveryTimeSelector, DeliveryTimeOption } from '../components/DeliveryTimeSelector';
 import { DeliveryMapLocationCard } from '../components/DeliveryMapLocationCard';
 import { OrderSummaryPanel } from '../components/OrderSummaryPanel';
-import { CartItem, Store } from '../types';
+import { CartItem, Store, DeliveryLocation } from '../types';
 
 interface CheckoutPageProps {
   cartItems: CartItem[];
@@ -31,6 +31,7 @@ interface CheckoutPageProps {
   onContinueToPayment: () => void;
   onSelectStore?: (storeId: string) => void;
   stores?: Store[];
+  deliveryLocationObj?: DeliveryLocation | null;
 }
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
@@ -56,6 +57,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   onContinueToPayment,
   onSelectStore,
   stores,
+  deliveryLocationObj,
 }) => {
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId) || addresses[0];
 
@@ -161,6 +163,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <DeliveryMapLocationCard
               store={store}
               selectedAddress={selectedAddress}
+              deliveryLocationObj={deliveryLocationObj}
               onBackToCart={onNavigateCart}
               onContinueToPayment={onContinueToPayment}
             />

@@ -91,6 +91,16 @@
       "role": "admin",
       "phone": "+91 98765 00001",
       "createdAt": "2026-10-19T16:23:39.192Z"
+    },
+    {
+      "id": "usr-1792609050122",
+      "name": "Praveen Driver",
+      "email": "praveen.driver@grocerygo.in",
+      "passwordHash": "Driver@123",
+      "role": "delivery_partner",
+      "phone": "+91 99999 88888",
+      "deliveryPartnerId": "dp-1792609050122",
+      "createdAt": "2026-10-21T18:57:30.122Z"
     }
   ],
   "stores": [
@@ -330,7 +340,7 @@
       "rating": 4.8,
       "isFeatured": true,
       "inStock": true,
-      "stockQuantity": 20
+      "stockQuantity": 18
     },
     {
       "id": "slk-onion",
@@ -410,7 +420,7 @@
       "rating": 4.9,
       "isFeatured": true,
       "inStock": true,
-      "stockQuantity": 40
+      "stockQuantity": 36
     },
     {
       "id": "slk-fortune-sunflower-oil",
@@ -1043,6 +1053,850 @@
     }
   ],
   "orders": [
+    {
+      "id": "ord-1792665559871",
+      "orderNumber": "GG-107609",
+      "customerId": "usr-customer-1",
+      "customerName": "Vishwajeet Waghmare",
+      "customerPhone": "+91 98765 43210",
+      "store": {
+        "id": "shree-lakshmi-kirana",
+        "name": "Shree Lakshmi Kirana",
+        "type": "Local Kirana Store",
+        "rating": 4.4,
+        "reviews": "120+",
+        "distance": "0.8 km",
+        "distanceKm": 0.8,
+        "deliveryTime": "15 - 25 mins",
+        "minDeliveryMins": 15,
+        "isOpen": true,
+        "image": "/src/assets/images/store_amma_kirana_1792250021207.jpg",
+        "coverImage": "/src/assets/images/store_kirana_cover_1792254220389.jpg",
+        "address": "#123, Hootagalli, Mysuru - 570018",
+        "closingTime": "Closes at 10:00 PM",
+        "minOrder": "₹100",
+        "deliveryFee": "Free (₹0)",
+        "deliveryArea": "Within 3 km",
+        "hours": "8:00 AM - 10:00 PM",
+        "lat": 12.3392,
+        "lng": 76.5927,
+        "maxDeliveryRadiusKm": 15,
+        "pincode": "570018",
+        "locality": "Hootagalli",
+        "district": "Mysuru",
+        "state": "Karnataka"
+      },
+      "items": [
+        {
+          "product": {
+            "id": "slk-aashirvaad-atta",
+            "name": "Aashirvaad Atta",
+            "price": 240
+          },
+          "quantity": 1
+        }
+      ],
+      "subtotal": 240,
+      "packingFee": 10,
+      "deliveryFee": 0,
+      "remoteAreaSurcharge": 0,
+      "discount": 0,
+      "totalAmount": 250,
+      "paymentMethod": "COD",
+      "paymentStatus": "paid",
+      "createdAt": "2026-10-22T10:39:19.871Z",
+      "status": "placed",
+      "storeAcceptanceStatus": "awaiting_acceptance",
+      "deliveryAssignmentStatus": "accepted",
+      "estimatedDeliveryTime": "20-30 mins",
+      "deliveryOtp": "2225",
+      "deliveryAddress": {
+        "id": "addr-home",
+        "name": "Home",
+        "address": "Hootagalli",
+        "lat": 12.3375,
+        "lng": 76.598,
+        "distanceKm": 0.8
+      },
+      "deliveryInstructions": "",
+      "instructions": "",
+      "timeline": [
+        {
+          "status": "placed",
+          "title": "Order Placed & Awaiting Store Confirmation",
+          "description": "Your order was sent to Shree Lakshmi Kirana.",
+          "time": "10:39 AM",
+          "isCompleted": true,
+          "isCurrent": true
+        },
+        {
+          "status": "confirmed",
+          "title": "Store Accepted & Processing",
+          "description": "Store owner has acknowledged your order.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "packing",
+          "title": "Items Packed & Ready for Pickup",
+          "description": "Groceries are bagged and sealed.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "out_for_delivery",
+          "title": "Delivery Partner En Route",
+          "description": "Delivery partner has picked up your package.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "delivered",
+          "title": "Delivered Successfully",
+          "description": "Verified with delivery OTP.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        }
+      ],
+      "deliveryPartner": {
+        "id": "dp-ravi-01",
+        "name": "Ravi Kumar",
+        "phone": "+91 98765 12345",
+        "rating": 4.8,
+        "totalDeliveries": 344,
+        "vehicleType": "Honda Activa 6G (KA-09-ER-4321)",
+        "vehicleNumber": "KA-09-ER-4321",
+        "photoUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        "currentLat": 12.3385,
+        "currentLng": 76.5992
+      },
+      "assignedPartnerId": "dp-ravi-01"
+    },
+    {
+      "id": "ord-1792665544551",
+      "orderNumber": "GG-929265",
+      "customerId": "usr-customer-1",
+      "customerName": "Vishwajeet Waghmare",
+      "customerPhone": "+91 98765 43210",
+      "store": {
+        "id": "shree-lakshmi-kirana",
+        "name": "Shree Lakshmi Kirana",
+        "type": "Local Kirana Store",
+        "rating": 4.4,
+        "reviews": "120+",
+        "distance": "0.8 km",
+        "distanceKm": 0.8,
+        "deliveryTime": "15 - 25 mins",
+        "minDeliveryMins": 15,
+        "isOpen": true,
+        "image": "/src/assets/images/store_amma_kirana_1792250021207.jpg",
+        "coverImage": "/src/assets/images/store_kirana_cover_1792254220389.jpg",
+        "address": "#123, Hootagalli, Mysuru - 570018",
+        "closingTime": "Closes at 10:00 PM",
+        "minOrder": "₹100",
+        "deliveryFee": "Free (₹0)",
+        "deliveryArea": "Within 3 km",
+        "hours": "8:00 AM - 10:00 PM",
+        "lat": 12.3392,
+        "lng": 76.5927,
+        "maxDeliveryRadiusKm": 15,
+        "pincode": "570018",
+        "locality": "Hootagalli",
+        "district": "Mysuru",
+        "state": "Karnataka"
+      },
+      "items": [
+        {
+          "product": {
+            "id": "slk-aashirvaad-atta",
+            "name": "Aashirvaad Atta",
+            "price": 240
+          },
+          "quantity": 1
+        }
+      ],
+      "subtotal": 240,
+      "packingFee": 10,
+      "deliveryFee": 0,
+      "remoteAreaSurcharge": 0,
+      "discount": 0,
+      "totalAmount": 250,
+      "paymentMethod": "COD",
+      "paymentStatus": "paid",
+      "createdAt": "2026-10-22T10:39:04.551Z",
+      "status": "placed",
+      "storeAcceptanceStatus": "awaiting_acceptance",
+      "deliveryAssignmentStatus": "accepted",
+      "estimatedDeliveryTime": "20-30 mins",
+      "deliveryOtp": "7519",
+      "deliveryAddress": {
+        "id": "addr-home",
+        "name": "Home",
+        "address": "Hootagalli",
+        "lat": 12.3375,
+        "lng": 76.598,
+        "distanceKm": 0.8
+      },
+      "deliveryInstructions": "",
+      "instructions": "",
+      "timeline": [
+        {
+          "status": "placed",
+          "title": "Order Placed & Awaiting Store Confirmation",
+          "description": "Your order was sent to Shree Lakshmi Kirana.",
+          "time": "10:39 AM",
+          "isCompleted": true,
+          "isCurrent": true
+        },
+        {
+          "status": "confirmed",
+          "title": "Store Accepted & Processing",
+          "description": "Store owner has acknowledged your order.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "packing",
+          "title": "Items Packed & Ready for Pickup",
+          "description": "Groceries are bagged and sealed.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "out_for_delivery",
+          "title": "Delivery Partner En Route",
+          "description": "Delivery partner has picked up your package.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "delivered",
+          "title": "Delivered Successfully",
+          "description": "Verified with delivery OTP.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        }
+      ],
+      "deliveryPartner": {
+        "id": "dp-ravi-01",
+        "name": "Ravi Kumar",
+        "phone": "+91 98765 12345",
+        "rating": 4.8,
+        "totalDeliveries": 344,
+        "vehicleType": "Honda Activa 6G (KA-09-ER-4321)",
+        "vehicleNumber": "KA-09-ER-4321",
+        "photoUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        "currentLat": 12.3385,
+        "currentLng": 76.5992
+      },
+      "assignedPartnerId": "dp-ravi-01"
+    },
+    {
+      "id": "ord-1792665533716",
+      "orderNumber": "GG-729484",
+      "customerId": "usr-customer-1",
+      "customerName": "Vishwajeet Waghmare",
+      "customerPhone": "+91 98765 43210",
+      "store": {
+        "id": "shree-lakshmi-kirana",
+        "name": "Shree Lakshmi Kirana",
+        "type": "Local Kirana Store",
+        "rating": 4.4,
+        "reviews": "120+",
+        "distance": "0.8 km",
+        "distanceKm": 0.8,
+        "deliveryTime": "15 - 25 mins",
+        "minDeliveryMins": 15,
+        "isOpen": true,
+        "image": "/src/assets/images/store_amma_kirana_1792250021207.jpg",
+        "coverImage": "/src/assets/images/store_kirana_cover_1792254220389.jpg",
+        "address": "#123, Hootagalli, Mysuru - 570018",
+        "closingTime": "Closes at 10:00 PM",
+        "minOrder": "₹100",
+        "deliveryFee": "Free (₹0)",
+        "deliveryArea": "Within 3 km",
+        "hours": "8:00 AM - 10:00 PM",
+        "lat": 12.3392,
+        "lng": 76.5927,
+        "maxDeliveryRadiusKm": 15,
+        "pincode": "570018",
+        "locality": "Hootagalli",
+        "district": "Mysuru",
+        "state": "Karnataka"
+      },
+      "items": [
+        {
+          "product": {
+            "id": "slk-aashirvaad-atta",
+            "name": "Aashirvaad Atta",
+            "price": 240
+          },
+          "quantity": 1
+        }
+      ],
+      "subtotal": 240,
+      "packingFee": 10,
+      "deliveryFee": 0,
+      "remoteAreaSurcharge": 0,
+      "discount": 0,
+      "totalAmount": 250,
+      "paymentMethod": "UPI",
+      "paymentStatus": "paid",
+      "createdAt": "2026-10-22T10:38:53.716Z",
+      "status": "delivered",
+      "storeAcceptanceStatus": "accepted",
+      "deliveryAssignmentStatus": "accepted",
+      "estimatedDeliveryTime": "20-30 mins",
+      "deliveryOtp": "6278",
+      "deliveryAddress": {
+        "id": "addr-home",
+        "name": "Vishwajeet Home",
+        "address": "#123, 5th Cross, Hootagalli, Mysuru - 570018",
+        "lat": 12.3375,
+        "lng": 76.598,
+        "distanceKm": 0.8,
+        "isRemote": false
+      },
+      "deliveryInstructions": "",
+      "instructions": "",
+      "timeline": [
+        {
+          "status": "placed",
+          "title": "Order Placed & Awaiting Store Confirmation",
+          "description": "Your order was sent to Shree Lakshmi Kirana.",
+          "time": "10:38 AM",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "confirmed",
+          "title": "Store Accepted & Processing",
+          "description": "Store owner has acknowledged your order.",
+          "time": "10:38 AM",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "packing",
+          "title": "Items Packed & Ready for Pickup",
+          "description": "Shree Lakshmi Kirana has packed your items and sealed the package for pickup.",
+          "time": "10:38 AM",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "out_for_delivery",
+          "title": "Delivery Partner En Route",
+          "description": "Delivery partner has picked up your package.",
+          "time": "10:38 AM",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "delivered",
+          "title": "Delivered Successfully",
+          "description": "Verified with delivery OTP.",
+          "time": "10:38 AM",
+          "isCompleted": true,
+          "isCurrent": true
+        }
+      ],
+      "storeAcceptedAt": "2026-10-22T10:38:53.726Z",
+      "fulfillmentStatus": "ready_for_pickup",
+      "packedAt": "2026-10-22T10:38:53.733Z",
+      "packedBy": "Ramesh Kumar",
+      "deliveryPartner": {
+        "id": "dp-ravi-01",
+        "name": "Ravi Kumar",
+        "phone": "+91 98765 12345",
+        "rating": 4.8,
+        "totalDeliveries": 344,
+        "vehicleType": "Honda Activa 6G (KA-09-ER-4321)",
+        "vehicleNumber": "KA-09-ER-4321",
+        "photoUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        "currentLat": 12.3385,
+        "currentLng": 76.5992
+      },
+      "assignedPartnerId": "dp-ravi-01"
+    },
+    {
+      "id": "ord-1792609074373",
+      "orderNumber": "GG-518694",
+      "customerId": "usr-customer-1",
+      "customerName": "Vishwajeet Waghmare",
+      "customerPhone": "+91 98765 43210",
+      "store": {
+        "id": "more-fresh-supermarket",
+        "name": "More Fresh Supermarket",
+        "type": "Supermarket",
+        "rating": 4.5,
+        "reviews": "320+",
+        "distance": "1.2 km",
+        "distanceKm": 1.2,
+        "deliveryTime": "20–30 mins",
+        "minDeliveryMins": 20,
+        "isOpen": true,
+        "image": "/src/assets/images/store_supermarket_aisle_1792249945521.jpg",
+        "coverImage": "/src/assets/images/store_supermarket_aisle_1792249945521.jpg",
+        "address": "Hootagalli Ring Road, Mysuru - 570018",
+        "closingTime": "Closes at 10:30 PM",
+        "minOrder": "₹200",
+        "deliveryFee": "Free (₹0)",
+        "deliveryArea": "Within 5 km",
+        "hours": "7:30 AM - 10:30 PM",
+        "lat": 12.342,
+        "lng": 76.595,
+        "maxDeliveryRadiusKm": 25,
+        "pincode": "570018",
+        "locality": "Hootagalli Ring Road",
+        "district": "Mysuru",
+        "state": "Karnataka"
+      },
+      "items": [
+        {
+          "product": {
+            "id": "mf-brown-bread",
+            "name": "Brown Bread",
+            "price": 45
+          },
+          "quantity": 1
+        }
+      ],
+      "subtotal": 45,
+      "packingFee": 10,
+      "deliveryFee": 15,
+      "remoteAreaSurcharge": 0,
+      "discount": 0,
+      "totalAmount": 70,
+      "paymentMethod": "UPI",
+      "paymentStatus": "paid",
+      "createdAt": "2026-10-21T18:57:54.373Z",
+      "status": "placed",
+      "storeAcceptanceStatus": "awaiting_acceptance",
+      "deliveryAssignmentStatus": "unassigned",
+      "estimatedDeliveryTime": "20-30 mins",
+      "deliveryOtp": "1325",
+      "deliveryAddress": {
+        "id": "addr-ringroad",
+        "name": "Ring Road",
+        "address": "Ring Road, Near Bogadi Junction, Mysuru - 570026",
+        "lat": 12.315,
+        "lng": 76.612,
+        "distanceKm": 3.8
+      },
+      "deliveryInstructions": "",
+      "instructions": "",
+      "timeline": [
+        {
+          "status": "placed",
+          "title": "Order Placed & Awaiting Store Confirmation",
+          "description": "Your order was sent to More Fresh Supermarket.",
+          "time": "06:57 PM",
+          "isCompleted": true,
+          "isCurrent": true
+        },
+        {
+          "status": "confirmed",
+          "title": "Store Accepted & Processing",
+          "description": "Store owner has acknowledged your order.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "packing",
+          "title": "Items Packed & Ready for Pickup",
+          "description": "Groceries are bagged and sealed.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "out_for_delivery",
+          "title": "Delivery Partner En Route",
+          "description": "Delivery partner has picked up your package.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "delivered",
+          "title": "Delivered Successfully",
+          "description": "Verified with delivery OTP.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        }
+      ]
+    },
+    {
+      "id": "ord-1792609063868",
+      "orderNumber": "GG-473575",
+      "customerId": "usr-customer-1",
+      "customerName": "Vishwajeet Waghmare",
+      "customerPhone": "+91 98765 43210",
+      "store": {
+        "id": "shree-lakshmi-kirana",
+        "name": "Shree Lakshmi Kirana",
+        "type": "Local Kirana Store",
+        "rating": 4.4,
+        "reviews": "120+",
+        "distance": "0.8 km",
+        "distanceKm": 0.8,
+        "deliveryTime": "15 - 25 mins",
+        "minDeliveryMins": 15,
+        "isOpen": true,
+        "image": "/src/assets/images/store_amma_kirana_1792250021207.jpg",
+        "coverImage": "/src/assets/images/store_kirana_cover_1792254220389.jpg",
+        "address": "#123, Hootagalli, Mysuru - 570018",
+        "closingTime": "Closes at 10:00 PM",
+        "minOrder": "₹100",
+        "deliveryFee": "Free (₹0)",
+        "deliveryArea": "Within 3 km",
+        "hours": "8:00 AM - 10:00 PM",
+        "lat": 12.3392,
+        "lng": 76.5927,
+        "maxDeliveryRadiusKm": 15,
+        "pincode": "570018",
+        "locality": "Hootagalli",
+        "district": "Mysuru",
+        "state": "Karnataka"
+      },
+      "items": [
+        {
+          "product": {
+            "id": "slk-onion",
+            "name": "Onions",
+            "price": 32
+          },
+          "quantity": 3
+        }
+      ],
+      "subtotal": 96,
+      "packingFee": 10,
+      "deliveryFee": 0,
+      "remoteAreaSurcharge": 0,
+      "discount": 0,
+      "totalAmount": 106,
+      "paymentMethod": "UPI",
+      "paymentStatus": "refund_pending",
+      "createdAt": "2026-10-21T18:57:43.868Z",
+      "status": "cancelled",
+      "storeAcceptanceStatus": "rejected",
+      "deliveryAssignmentStatus": "failed",
+      "estimatedDeliveryTime": "20-30 mins",
+      "deliveryOtp": "7661",
+      "deliveryAddress": {
+        "id": "addr-home",
+        "name": "Home",
+        "address": "#123, 5th Cross, Hootagalli, Mysuru - 570018",
+        "lat": 12.3375,
+        "lng": 76.598,
+        "distanceKm": 0.8
+      },
+      "deliveryInstructions": "",
+      "instructions": "",
+      "timeline": [
+        {
+          "status": "placed",
+          "title": "Order Placed & Awaiting Store Confirmation",
+          "description": "Your order was sent to Shree Lakshmi Kirana.",
+          "time": "06:57 PM",
+          "isCompleted": true,
+          "isCurrent": true
+        },
+        {
+          "status": "confirmed",
+          "title": "Store Accepted & Processing",
+          "description": "Store owner has acknowledged your order.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "packing",
+          "title": "Items Packed & Ready for Pickup",
+          "description": "Groceries are bagged and sealed.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "out_for_delivery",
+          "title": "Delivery Partner En Route",
+          "description": "Delivery partner has picked up your package.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "delivered",
+          "title": "Delivered Successfully",
+          "description": "Verified with delivery OTP.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        }
+      ],
+      "rejectionReason": "Fresh onions currently exhausted from farm stock",
+      "cancellationReason": "Fresh onions currently exhausted from farm stock"
+    },
+    {
+      "id": "ord-1792609050104",
+      "orderNumber": "GG-244276",
+      "customerId": "usr-customer-1",
+      "customerName": "Vishwajeet Waghmare",
+      "customerPhone": "+91 98765 43210",
+      "store": {
+        "id": "shree-lakshmi-kirana",
+        "name": "Shree Lakshmi Kirana",
+        "type": "Local Kirana Store",
+        "rating": 4.4,
+        "reviews": "120+",
+        "distance": "0.8 km",
+        "distanceKm": 0.8,
+        "deliveryTime": "15 - 25 mins",
+        "minDeliveryMins": 15,
+        "isOpen": true,
+        "image": "/src/assets/images/store_amma_kirana_1792250021207.jpg",
+        "coverImage": "/src/assets/images/store_kirana_cover_1792254220389.jpg",
+        "address": "#123, Hootagalli, Mysuru - 570018",
+        "closingTime": "Closes at 10:00 PM",
+        "minOrder": "₹100",
+        "deliveryFee": "Free (₹0)",
+        "deliveryArea": "Within 3 km",
+        "hours": "8:00 AM - 10:00 PM",
+        "lat": 12.3392,
+        "lng": 76.5927,
+        "maxDeliveryRadiusKm": 15,
+        "pincode": "570018",
+        "locality": "Hootagalli",
+        "district": "Mysuru",
+        "state": "Karnataka"
+      },
+      "items": [
+        {
+          "product": {
+            "id": "slk-tomato",
+            "name": "Tomatoes",
+            "price": 30
+          },
+          "quantity": 2
+        }
+      ],
+      "subtotal": 60,
+      "packingFee": 10,
+      "deliveryFee": 0,
+      "remoteAreaSurcharge": 0,
+      "discount": 0,
+      "totalAmount": 70,
+      "paymentMethod": "Cash on Delivery (COD)",
+      "paymentStatus": "cod",
+      "createdAt": "2026-10-21T18:57:30.104Z",
+      "status": "confirmed",
+      "storeAcceptanceStatus": "accepted",
+      "deliveryAssignmentStatus": "accepted",
+      "estimatedDeliveryTime": "20-30 mins",
+      "deliveryOtp": "2108",
+      "deliveryAddress": {
+        "id": "addr-home",
+        "name": "Home",
+        "address": "#123, 5th Cross, Hootagalli, Mysuru - 570018",
+        "lat": 12.3375,
+        "lng": 76.598,
+        "distanceKm": 0.8
+      },
+      "deliveryInstructions": "",
+      "instructions": "",
+      "timeline": [
+        {
+          "status": "placed",
+          "title": "Order Placed & Awaiting Store Confirmation",
+          "description": "Your order was sent to Shree Lakshmi Kirana.",
+          "time": "06:57 PM",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "confirmed",
+          "title": "Store Accepted & Processing",
+          "description": "Store owner has acknowledged your order.",
+          "time": "06:57 PM",
+          "isCompleted": true,
+          "isCurrent": true
+        },
+        {
+          "status": "packing",
+          "title": "Items Packed & Ready for Pickup",
+          "description": "Groceries are bagged and sealed.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "out_for_delivery",
+          "title": "Delivery Partner En Route",
+          "description": "Delivery partner has picked up your package.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        },
+        {
+          "status": "delivered",
+          "title": "Delivered Successfully",
+          "description": "Verified with delivery OTP.",
+          "time": "--:--",
+          "isCompleted": false,
+          "isCurrent": false
+        }
+      ],
+      "storeAcceptedAt": "2026-10-21T18:57:30.108Z",
+      "deliveryPartner": {
+        "id": "dp-ravi-01",
+        "name": "Ravi Kumar",
+        "phone": "+91 98765 12345",
+        "rating": 4.8,
+        "totalDeliveries": 343,
+        "vehicleType": "Honda Activa 6G (KA-09-ER-4321)",
+        "vehicleNumber": "KA-09-ER-4321",
+        "photoUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        "currentLat": 12.3385,
+        "currentLng": 76.5992
+      },
+      "assignedPartnerId": "dp-ravi-01"
+    },
+    {
+      "id": "ord-1792609038172",
+      "orderNumber": "GG-640576",
+      "customerId": "usr-customer-1",
+      "customerName": "Vishwajeet Waghmare",
+      "customerPhone": "+91 98765 43210",
+      "store": {
+        "id": "shree-lakshmi-kirana",
+        "name": "Shree Lakshmi Kirana",
+        "type": "Local Kirana Store",
+        "rating": 4.4,
+        "reviews": "120+",
+        "distance": "0.8 km",
+        "distanceKm": 0.8,
+        "deliveryTime": "15 - 25 mins",
+        "minDeliveryMins": 15,
+        "isOpen": true,
+        "image": "/src/assets/images/store_amma_kirana_1792250021207.jpg",
+        "coverImage": "/src/assets/images/store_kirana_cover_1792254220389.jpg",
+        "address": "#123, Hootagalli, Mysuru - 570018",
+        "closingTime": "Closes at 10:00 PM",
+        "minOrder": "₹100",
+        "deliveryFee": "Free (₹0)",
+        "deliveryArea": "Within 3 km",
+        "hours": "8:00 AM - 10:00 PM",
+        "lat": 12.3392,
+        "lng": 76.5927,
+        "maxDeliveryRadiusKm": 15,
+        "pincode": "570018",
+        "locality": "Hootagalli",
+        "district": "Mysuru",
+        "state": "Karnataka"
+      },
+      "items": [
+        {
+          "product": {
+            "id": "slk-aashirvaad-atta",
+            "name": "Aashirvaad Atta",
+            "price": 240
+          },
+          "quantity": 1
+        }
+      ],
+      "subtotal": 240,
+      "packingFee": 10,
+      "deliveryFee": 15,
+      "remoteAreaSurcharge": 0,
+      "discount": 0,
+      "totalAmount": 265,
+      "paymentMethod": "UPI / Google Pay",
+      "paymentStatus": "paid",
+      "createdAt": "2026-10-21T18:57:18.172Z",
+      "status": "delivered",
+      "storeAcceptanceStatus": "accepted",
+      "deliveryAssignmentStatus": "accepted",
+      "estimatedDeliveryTime": "20-30 mins",
+      "deliveryOtp": "1569",
+      "deliveryAddress": {
+        "id": "addr-ringroad",
+        "name": "Ring Road",
+        "address": "Ring Road, Near Bogadi Junction, Mysuru - 570026",
+        "lat": 12.315,
+        "lng": 76.612,
+        "distanceKm": 3.8
+      },
+      "deliveryInstructions": "Leave package at front security gate and call",
+      "instructions": "Leave package at front security gate and call",
+      "timeline": [
+        {
+          "status": "placed",
+          "title": "Order Placed & Awaiting Store Confirmation",
+          "description": "Your order was sent to Shree Lakshmi Kirana.",
+          "time": "06:57 PM",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "confirmed",
+          "title": "Store Accepted & Processing",
+          "description": "Store owner has acknowledged your order.",
+          "time": "06:57 PM",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "packing",
+          "title": "Items Packed & Ready for Pickup",
+          "description": "Groceries are bagged and sealed.",
+          "time": "--:--",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "out_for_delivery",
+          "title": "Delivery Partner En Route",
+          "description": "Delivery partner has picked up your package.",
+          "time": "06:57 PM",
+          "isCompleted": true,
+          "isCurrent": false
+        },
+        {
+          "status": "delivered",
+          "title": "Delivered Successfully",
+          "description": "Verified with delivery OTP.",
+          "time": "06:57 PM",
+          "isCompleted": true,
+          "isCurrent": true
+        }
+      ],
+      "storeAcceptedAt": "2026-10-21T18:57:18.187Z",
+      "deliveryPartner": {
+        "id": "dp-ravi-01",
+        "name": "Ravi Kumar",
+        "phone": "+91 98765 12345",
+        "rating": 4.8,
+        "totalDeliveries": 343,
+        "vehicleType": "Honda Activa 6G (KA-09-ER-4321)",
+        "vehicleNumber": "KA-09-ER-4321",
+        "photoUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        "currentLat": 12.3385,
+        "currentLng": 76.5992
+      },
+      "assignedPartnerId": "dp-ravi-01"
+    },
     {
       "id": "ord-8492",
       "orderNumber": "#GG-MYS-8492",
@@ -1684,7 +2538,7 @@
       "name": "Ravi Kumar",
       "phone": "+91 98765 12345",
       "rating": 4.8,
-      "totalDeliveries": 342,
+      "totalDeliveries": 344,
       "vehicleType": "Honda Activa 6G (KA-09-ER-4321)",
       "vehicleNumber": "KA-09-ER-4321",
       "photoUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",

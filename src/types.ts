@@ -163,7 +163,7 @@ export interface Order {
   discount: number;
   totalAmount: number;
   paymentMethod: string;
-  paymentStatus: 'paid' | 'pending' | 'cod';
+  paymentStatus: 'paid' | 'pending' | 'cod' | 'refund_pending' | 'refunded';
   createdAt: string;
   status: OrderStatus;
   estimatedDeliveryTime: string;
@@ -171,6 +171,22 @@ export interface Order {
   deliveryAddress: DeliveryLocation;
   deliveryPartner?: DeliveryPartner;
   timeline: OrderTimelineStep[];
+  deliveryInstructions?: string;
+  storeAcceptanceStatus?: 'awaiting_acceptance' | 'accepted' | 'rejected';
+  rejectionReason?: string;
+  storeAcceptedAt?: string;
+  deliveryAssignmentStatus?: 'unassigned' | 'searching' | 'offered' | 'accepted' | 'rejected' | 'assigned' | 'completed' | 'failed';
+  assignedPartnerId?: string;
+  customerId?: string;
+  customerName?: string;
+  customerPhone?: string;
+  roadDistanceKm?: number;
+  roadDurationMins?: number;
+  fulfillmentStatus?: 'awaiting_preparation' | 'preparing' | 'ready_for_pickup' | 'picked_up' | 'out_for_delivery' | 'delivered';
+  packedAt?: string;
+  packedBy?: string;
+  pickedUpAt?: string;
+  deliveredAt?: string;
 }
 
 export interface ServiceAreaConfig {

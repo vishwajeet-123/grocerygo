@@ -214,11 +214,25 @@ export const ordersApi = {
   },
 
   async acceptOrder(orderId: string): Promise<Order> {
-    return this.updateStatus(orderId, 'confirmed');
+    const res = await request<{ success: boolean; order: Order }>(`/api/orders/${orderId}/accept`, {
+      method: 'POST',
+    });
+    return res.order || (res as any);
   },
 
   async rejectOrder(orderId: string, reason?: string): Promise<Order> {
-    return this.updateStatus(orderId, 'cancelled', { rejectionReason: reason });
+    const res = await request<{ success: boolean; order: Order }>(`/api/orders/${orderId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+    return res.order || (res as any);
+  },
+
+  async markReady(orderId: string): Promise<Order> {
+    const res = await request<{ success: boolean; order: Order }>(`/api/orders/${orderId}/mark-ready`, {
+      method: 'POST',
+    });
+    return res.order || (res as any);
   },
 
   async updateStatus(
@@ -246,10 +260,28 @@ export const deliveryApi = {
     return request<Order[]>('/api/delivery/my-deliveries');
   },
 
+  async getAvailableDispatches(): Promise<Order[]> {
+    return request<Order[]>('/api/delivery/available-dispatches');
+  },
+
   async acceptOrder(orderId: string): Promise<{ success: boolean; order: Order }> {
     return request<{ success: boolean; order: Order }>('/api/delivery/accept-order', {
       method: 'POST',
       body: JSON.stringify({ orderId }),
+    });
+  },
+
+  async pickupOrder(orderId: string): Promise<{ success: boolean; order: Order }> {
+    return request<{ success: boolean; order: Order }>('/api/delivery/pickup-order', {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    });
+  },
+
+  async rejectOrder(orderId: string, reason?: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>('/api/delivery/reject-order', {
+      method: 'POST',
+      body: JSON.stringify({ orderId, reason }),
     });
   },
 

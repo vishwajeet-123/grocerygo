@@ -430,4 +430,106 @@ router.patch('/remote-requests/:id', (req: Request, res: Response) => {
   });
 });
 
+/**
+ * POST /api/location/compute-route
+ * Computes road route, distance, and duration using Google Routes API
+ * or high-fidelity road modeling if Routes API is not configured or unavailable.
+ */
+router.post('/compute-route', async (req: Request, res: Response) => {
+  const { origin, destination } = req.body;
+
+  if (
+    !origin ||
+    !destination ||
+    typeof origin.lat !== 'number' ||
+    typeof destination.lat !== 'number' ||
+    typeof origin.lng !== 'number' ||
+    typeof destination.lng !== 'number'
+  ) {
+    res.status(400).json({ error: 'Origin and destination coordinates are required' });
+    return;
+  }
+
+  const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+
+  if (apiKey && apiKey.startsWith('AIza')) {
+    try {
+      const routesUrl = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+      const response = await fetch(routesUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask':
+            'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.viewport',
+        },
+        body: JSON.stringify({
+          origin: {
+            location: {
+              latLng: {
+                latitude: origin.lat,
+                longitude: origin.lng,
+              },
+            },
+          },
+          destination: {
+            location: {
+              latLng: {
+                latitude: destination.lat,
+                longitude: destination.lng,
+              },
+            },
+          },
+          travelMode: 'DRIVE',
+          routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
+          polylineQuality: 'HIGH_QUALITY',
+        }),
+      });
+
+      if (response.ok) {
+        const data = (await response.json()) as any;
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const encoded = route.polyline?.encodedPolyline;
+          const distanceMeters = route.distanceMeters || 0;
+          const durationSeconds = parseInt(route.duration?.replace('s', '') || '0', 10);
+          const distanceKm = Math.round((distanceMeters / 1000) * 10) / 10;
+          const durationMins = Math.max(1, Math.round(durationSeconds / 60));
+
+          res.json({
+            success: true,
+            source: 'google_routes_api',
+            encodedPolyline: encoded,
+            distanceKm,
+            distanceText: `${distanceKm} km`,
+            durationMins,
+            durationText: `${durationMins} mins`,
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Google Routes API request failed, falling back to road modeling:', err);
+    }
+  }
+
+  // Realistic road calculation fallback based on authentic Karnataka road conditions
+  const straightDist = calculateHaversineDistanceKm(
+    origin.lat,
+    origin.lng,
+    destination.lat,
+    destination.lng
+  );
+  const roadMetrics = estimateRoadMetrics(straightDist);
+
+  res.json({
+    success: true,
+    source: 'road_metrics_engine',
+    distanceKm: roadMetrics.roadDistanceKm,
+    distanceText: `${roadMetrics.roadDistanceKm} km`,
+    durationMins: roadMetrics.estimatedMins,
+    durationText: `${roadMetrics.estimatedMins} mins`,
+  });
+});
+
 export default router;

@@ -7,6 +7,10 @@ import {
   useMap,
 } from '@vis.gl/react-google-maps';
 import {
+  decodePolyline,
+  generateRealisticRoadPath,
+} from '../utils/routeUtils';
+import {
   Store as StoreIcon,
   MapPin,
   Navigation,
@@ -66,7 +70,7 @@ function MapCenterController({
   return null;
 }
 
-// Subcomponent to fit map bounds and draw route polyline
+// Subcomponent to fit map bounds and draw route polyline without legacy DirectionsService
 function MapBoundsAndPolyline({
   markers,
   routeCoordinates,
@@ -80,44 +84,112 @@ function MapBoundsAndPolyline({
   useEffect(() => {
     if (!map) return;
 
-    // Polyline
+    let isSubscribed = true;
+
+    // Clear previous polyline
     if (polylineRef.current) {
       polylineRef.current.setMap(null);
       polylineRef.current = null;
     }
 
-    if (routeCoordinates && routeCoordinates.length > 1) {
-      const poly = new google.maps.Polyline({
-        path: routeCoordinates,
-        geodesic: true,
-        strokeColor: '#059669', // Emerald 600
-        strokeOpacity: 0.85,
-        strokeWeight: 4,
-        map,
+    // Fit map bounds to encompass all markers and route coordinates
+    const bounds = new google.maps.LatLngBounds();
+    let hasPoints = false;
+
+    if (markers && markers.length > 0) {
+      markers.forEach((m) => {
+        if (m.position && typeof m.position.lat === 'number' && typeof m.position.lng === 'number') {
+          bounds.extend(m.position);
+          hasPoints = true;
+        }
       });
-      polylineRef.current = poly;
+    }
+
+    if (routeCoordinates && routeCoordinates.length > 0) {
+      routeCoordinates.forEach((c) => {
+        if (c && typeof c.lat === 'number' && typeof c.lng === 'number') {
+          bounds.extend(c);
+          hasPoints = true;
+        }
+      });
+    }
+
+    if (hasPoints) {
+      map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+    }
+
+    // Compute and draw road route
+    if (routeCoordinates && routeCoordinates.length >= 2) {
+      const origin = routeCoordinates[0];
+      const destination = routeCoordinates[routeCoordinates.length - 1];
+
+      // Draw initial road path immediately
+      const initialPath = generateRealisticRoadPath(origin, destination);
+      const drawPolyline = (path: { lat: number; lng: number }[]) => {
+        if (!isSubscribed || !map) return;
+        if (polylineRef.current) {
+          polylineRef.current.setMap(null);
+        }
+        const poly = new google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: '#059669', // Emerald 600
+          strokeOpacity: 0.9,
+          strokeWeight: 5,
+          map,
+        });
+        polylineRef.current = poly;
+
+        // Ensure bounds encompass the route
+        path.forEach((pt) => bounds.extend(pt));
+        map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+      };
+
+      drawPolyline(initialPath);
+
+      // Async fetch optimized road route via Routes API proxy
+      fetch('/api/location/compute-route', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ origin, destination }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!isSubscribed || !data) return;
+          if (data.encodedPolyline) {
+            const decoded = decodePolyline(data.encodedPolyline);
+            if (decoded && decoded.length > 0) {
+              drawPolyline(decoded);
+            }
+          }
+        })
+        .catch(() => {
+          // Keep initial path
+        });
     }
 
     return () => {
+      isSubscribed = false;
       if (polylineRef.current) {
         polylineRef.current.setMap(null);
         polylineRef.current = null;
       }
     };
-  }, [map, routeCoordinates]);
+  }, [map, routeCoordinates, markers]);
 
   return null;
 }
 
 /**
  * Interactive OpenStreetMap tile canvas fallback
- * Renders fully functional pan, zoom, click-to-pin, and marker dragging
+ * Renders fully functional pan, zoom, click-to-pin, marker dragging, and route lines
  * across all cities, towns, and remote rural villages in India
  */
 function FallbackInteractiveTileMap({
   center,
   zoom: initialZoom,
   markers = [],
+  routeCoordinates = [],
   onSelectCoordinate,
   onMarkerDragEnd,
   interactive = true,
@@ -125,6 +197,7 @@ function FallbackInteractiveTileMap({
   center: { lat: number; lng: number };
   zoom: number;
   markers?: MapMarkerItem[];
+  routeCoordinates?: { lat: number; lng: number }[];
   onSelectCoordinate?: (lat: number, lng: number) => void;
   onMarkerDragEnd?: (lat: number, lng: number) => void;
   interactive?: boolean;
@@ -158,29 +231,29 @@ function FallbackInteractiveTileMap({
   const centerTileX = lon2tile(mapCenter.lng, zoomLevel);
   const centerTileY = lat2tile(mapCenter.lat, zoomLevel);
 
-  // Handle map click to place pin
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!interactive || !onSelectCoordinate || isDraggingMap) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    if (!interactive || !onSelectCoordinate || !containerRef.current || isDraggingMap) return;
 
-    const clickX = e.clientX - rect.left - rect.width / 2;
-    const clickY = e.clientY - rect.top - rect.height / 2;
+    const rect = containerRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const deltaPixelX = clickX - centerX;
+    const deltaPixelY = clickY - centerY;
 
     const tileSize = 256;
-    const clickedTileX = centerTileX + clickX / tileSize;
-    const clickedTileY = centerTileY + clickY / tileSize;
+    const clickedTileX = centerTileX + deltaPixelX / tileSize;
+    const clickedTileY = centerTileY + deltaPixelY / tileSize;
 
-    const newLng = tile2lon(clickedTileX, zoomLevel);
-    const newLat = tile2lat(clickedTileY, zoomLevel);
+    const clickedLng = tile2lon(clickedTileX, zoomLevel);
+    const clickedLat = tile2lat(clickedTileY, zoomLevel);
 
-    onSelectCoordinate(
-      Math.round(newLat * 100000) / 100000,
-      Math.round(newLng * 100000) / 100000
-    );
+    onSelectCoordinate(clickedLat, clickedLng);
   };
 
-  // Pan controls via dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!interactive) return;
     setIsDraggingMap(true);
@@ -189,13 +262,14 @@ function FallbackInteractiveTileMap({
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDraggingMap || !dragStart) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
+
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
     setDragStart({ x: e.clientX, y: e.clientY });
 
     const tileSize = 256;
-    const newTileX = centerTileX - dx / tileSize;
-    const newTileY = centerTileY - dy / tileSize;
+    const newTileX = centerTileX - deltaX / tileSize;
+    const newTileY = centerTileY - deltaY / tileSize;
 
     const newLng = tile2lon(newTileX, zoomLevel);
     const newLat = tile2lat(newTileY, zoomLevel);
@@ -269,7 +343,6 @@ function FallbackInteractiveTileMap({
                 top: `${dy * 256}px`,
               }}
               onError={(e) => {
-                // If offline or rate limited, gracefully display styled grid
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
@@ -277,14 +350,52 @@ function FallbackInteractiveTileMap({
         </div>
       </div>
 
+      {/* Road Route Polyline SVG Layer */}
+      {routeCoordinates && routeCoordinates.length >= 2 && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible z-10">
+          <svg className="w-full h-full overflow-visible pointer-events-none">
+            {(() => {
+              const p1 = routeCoordinates[0];
+              const p2 = routeCoordinates[routeCoordinates.length - 1];
+              const o1 = getMarkerPixelOffset(p1.lat, p1.lng);
+              const o2 = getMarkerPixelOffset(p2.lat, p2.lng);
+              const midX = (o1.x + o2.x) / 2 + 15;
+              const midY = (o1.y + o2.y) / 2 - 12;
+
+              return (
+                <g>
+                  {/* Outer casing */}
+                  <path
+                    d={`M ${o1.x} ${o1.y} Q ${midX} ${midY} ${o2.x} ${o2.y}`}
+                    fill="none"
+                    stroke="#047857"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    opacity="0.4"
+                  />
+                  {/* Primary green road route line */}
+                  <path
+                    d={`M ${o1.x} ${o1.y} Q ${midX} ${midY} ${o2.x} ${o2.y}`}
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray="6 4"
+                  />
+                </g>
+              );
+            })()}
+          </svg>
+        </div>
+      )}
+
       {/* Render Markers */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
         {markers.map((marker) => {
           const { x, y } = getMarkerPixelOffset(marker.position.lat, marker.position.lng);
           const isStore = marker.type === 'store';
           const isRemote = marker.type === 'remote';
           const isDriver = marker.type === 'driver';
-          const isCustomer = marker.type === 'customer';
 
           return (
             <div
@@ -350,19 +461,17 @@ function FallbackInteractiveTileMap({
           >
             <ZoomIn className="w-4 h-4" />
           </button>
-          <div className="h-px bg-slate-200 mx-1" />
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setZoomLevel((z) => Math.max(7, z - 1));
+              setZoomLevel((z) => Math.max(8, z - 1));
             }}
             className="w-8 h-8 flex items-center justify-center text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
-          <div className="h-px bg-slate-200 mx-1" />
           <button
             type="button"
             onClick={(e) => {
@@ -376,32 +485,16 @@ function FallbackInteractiveTileMap({
           </button>
         </div>
       )}
-
-      {/* Helper click instructions badge */}
-      {interactive && (
-        <div className="absolute top-3 left-3 z-30 bg-white/95 backdrop-blur-xs text-slate-800 text-[11px] font-medium px-3 py-1.5 rounded-xl shadow-md border border-slate-200 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span>Click anywhere to place delivery pin · Drag map to pan</span>
-        </div>
-      )}
-
-      {/* Coordinates readout badge */}
-      <div className="absolute bottom-3 left-3 z-30 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-mono px-2.5 py-1 rounded-lg shadow-sm border border-slate-800 flex items-center gap-1.5">
-        <Compass className="w-3.5 h-3.5 text-emerald-400" />
-        <span>
-          {mapCenter.lat.toFixed(4)}° N, {mapCenter.lng.toFixed(4)}° E · Zoom {zoomLevel}x
-        </span>
-      </div>
     </div>
   );
 }
 
 export const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
-  center = { lat: 12.3392, lng: 76.5927 }, // Hootagalli Mysuru
+  center = { lat: 12.3392, lng: 76.5927 },
   zoom = 13,
   markers = [],
   routeCoordinates,
-  height = '320px',
+  height = '360px',
   className = '',
   onSelectCoordinate,
   interactive = true,
@@ -442,9 +535,9 @@ export const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
   return (
     <div
       style={{ height }}
-      className={`relative w-full rounded-2xl overflow-hidden border border-slate-200/90 shadow-2xs bg-slate-100 ${className}`}
+      className={`relative rounded-2xl overflow-hidden border border-slate-200/90 shadow-xs ${className}`}
     >
-      {!hasApiError && isKeyValid ? (
+      {isKeyValid && !hasApiError ? (
         <APIProvider
           apiKey={apiKey}
           onError={(err) => {
@@ -534,11 +627,12 @@ export const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
           </Map>
         </APIProvider>
       ) : (
-        /* Full interactive tile map fallback with Pan, Zoom, and Pin Placement */
+        /* Full interactive tile map fallback with Pan, Zoom, Pin Placement and Road Route SVG */
         <FallbackInteractiveTileMap
           center={center}
           zoom={zoom}
           markers={markers}
+          routeCoordinates={routeCoordinates}
           onSelectCoordinate={onSelectCoordinate}
           onMarkerDragEnd={onMarkerDragEnd}
           interactive={interactive}

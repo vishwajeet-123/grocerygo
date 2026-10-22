@@ -1,0 +1,567 @@
+# GroceryGo – Smart Local Grocery Delivery
+## Critical Fix: Address Synchronization, Real-Time Orders, Delivery Assignment, Maps, and Role Authentication
+
+Act as a senior full-stack engineer specializing in React, backend APIs, PostgreSQL, real-time event systems, authentication, and Google Maps.
+
+I have already developed most of my GroceryGo project. Do not rebuild it from scratch. Inspect the existing codebase and correct the current implementation while preserving working pages, styling, data, API integrations, and configuration.
+
+My project must function as a real, synchronized grocery delivery platform.
+
+**The most important requirement is that the customer, the selected store owner, and the delivery partner must all see the same real order and its current status. Every change must be saved by the backend and reflected across authorized dashboards in real time.**
+
+My intended architecture is React.js, a backend API, and PostgreSQL. Preserve the backend, database, and authentication provider already configured in the repository. Do not silently migrate frameworks, create a second database, or replace working integrations.
+
+---
+
+# 1. First Inspect and Diagnose the Existing Problems
+
+Before making changes, inspect the customer application, store owner dashboard, delivery partner dashboard, authentication, database schema, API integrations, location state, Maps components, and order workflow.
+
+Identify the causes of these specific problems visible in my screenshots:
+
+1. The header shows the selected delivery address as Ring Road, but the address and map below still show an older Home address.
+2. An order appears confirmed on the tracking page, but the delivery partner dashboard shows zero available dispatches.
+3. Orders from the customer portal do not consistently appear in the correct store owner's dashboard.
+4. Store acceptance, customer notifications, and delivery assignment are not synchronized reliably.
+5. Role-specific sign-in, sign-out, and authorization are incomplete.
+6. Some dashboard information may be hardcoded rather than loaded from actual backend records.
+
+Trace the actual state, database records, API responses, and status transitions. Fix the underlying causes rather than applying cosmetic workarounds.
+
+Do not use dummy orders or locally changed React state to pretend the integration is working.
+
+# 2. Fix the Delivery Address and Map Synchronization
+
+This is an immediate priority.
+
+Currently, when I select a delivery address such as Ring Road, the address displayed in the header changes, but the delivery map and route still use the previous address. Correct this throughout GroceryGo.
+
+## Required behavior
+
+Maintain a consistent selected delivery address across the application.
+
+When a customer selects or changes an address:
+
+1. Save the selected address in the shared application state.
+2. Preserve its latitude and longitude.
+3. Update the header address immediately.
+4. Update the checkout delivery-address section.
+5. Update the map destination marker.
+6. Update the store-to-customer route.
+7. Recalculate road distance and estimated travel time when route data is available.
+8. Update delivery eligibility and fee estimates where applicable.
+9. Update the displayed locality, address, and postal code.
+10. Ensure no component continues to display an outdated address.
+
+Use the same source of truth for the current selected address across all relevant components. Avoid keeping separate independent copies of the address in the header, checkout, and map component.
+
+Use a stable address ID and the associated coordinates rather than comparing address text alone.
+
+## Important distinction
+
+There are two different pieces of location information:
+
+- **Currently selected delivery address:** Used when browsing stores and preparing a new order.
+- **Confirmed order delivery address:** A snapshot saved with a specific order when that order is placed.
+
+If I select Ring Road for a new checkout, the checkout map must show Ring Road.
+
+If an existing order was placed for Home, its tracking page must continue showing Home unless the destination is explicitly changed through an authorized order-amendment process.
+
+Changing the default address must not silently change the destination of an already placed order.
+
+## Verification
+
+Test this sequence:
+
+- Select Home.
+- Confirm the map shows Home.
+- Change to Ring Road.
+- Confirm the map, address label, destination marker, route, distance, and checkout details update.
+- Place an order for Ring Road.
+- Open that order's tracking page.
+- Verify that the map shows Ring Road.
+- Change the customer's default address afterward.
+- Verify that the existing order still shows its saved Ring Road destination.
+
+Do not claim that route distance or travel time is real unless it comes from the configured routing service.
+
+# 3. Establish One Correct Order Lifecycle
+
+Correct the order state model so that the customer, store owner, and delivery partner cannot display contradictory statuses.
+
+Use the existing status model if possible. Otherwise, define consistent order, store-fulfillment, payment, and delivery-assignment states.
+
+The intended flow is:
+
+CUSTOMER PLACES ORDER
+→ PAYMENT IS VERIFIED OR THE SELECTED PAYMENT METHOD IS RECORDED
+→ ORDER IS SAVED AS AWAITING STORE ACCEPTANCE
+→ CORRECT STORE OWNER RECEIVES THE ORDER
+→ STORE OWNER ACCEPTS OR REJECTS
+→ IF ACCEPTED, DELIVERY-PARTNER ASSIGNMENT BEGINS
+→ ELIGIBLE DELIVERY PARTNER RECEIVES THE OFFER
+→ DELIVERY PARTNER ACCEPTS OR REJECTS THE OFFER
+→ STORE PREPARES THE ORDER
+→ DELIVERY PARTNER PICKS UP THE ORDER
+→ DELIVERY PARTNER DELIVERS THE ORDER
+→ CUSTOMER AND STORE SEE THE COMPLETED STATUS.
+
+Do not treat payment success as store acceptance.
+
+Do not mark an order as Out for Delivery before a delivery partner has accepted the assignment and actually picked up the order.
+
+If the store rejects the order, do not offer it to a delivery partner. Handle the applicable cancellation and refund process.
+
+Use separate fields for related concepts where necessary, for example:
+
+**Order acceptance status**
+- Awaiting acceptance.
+- Accepted.
+- Rejected.
+
+**Fulfillment status**
+- Awaiting preparation.
+- Preparing.
+- Ready for pickup.
+- Picked up.
+- Out for delivery.
+- Delivered.
+
+**Delivery assignment status**
+- Unassigned.
+- Searching for partner.
+- Offered to partner.
+- Accepted by partner.
+- Rejected by partner.
+- Assigned.
+- Completed.
+- Assignment failed.
+
+**Payment status**
+- Pending.
+- Authorized, if supported.
+- Paid.
+- Failed.
+- Refund pending.
+- Refunded.
+
+Adapt these values to the existing database and business logic. Do not create conflicting or redundant state fields without a reason.
+
+The backend must validate permitted transitions and record timestamps for important events.
+
+# 4. Real-Time Customer-to-Store Owner Synchronization
+
+When a customer places an order from any store, the actual order must immediately become visible to the authorized owner of that store.
+
+For example:
+
+- Order from D-Mart → D-Mart owner receives it.
+- Order from More Fresh Supermarket → More Fresh owner receives it.
+- Order from Shree Lakshmi Kirana → Shree Lakshmi owner receives it.
+
+Do not send every order to every store owner.
+
+## Order creation
+
+When the customer completes checkout:
+
+1. Validate the selected store and product records.
+2. Validate current inventory and prices.
+3. Validate the confirmed delivery address and serviceability.
+4. Create the order through the backend.
+5. Save its order items, quantities, price snapshots, address, coordinates, delivery instructions, payment method, and payment status.
+6. Set the order to Awaiting Store Acceptance.
+7. Publish a real-time event to the correct store owner.
+8. Display the newly created order in that owner's Incoming Orders panel without requiring a manual browser refresh.
+
+Prevent duplicate orders when customers click the checkout button repeatedly or retry after a network failure.
+
+## Store Owner Dashboard: Incoming Orders
+
+Replace hardcoded demonstration orders with actual orders associated with the authenticated owner's store.
+
+For every incoming order, display:
+- Order ID and creation time.
+- Customer name and authorized contact details.
+- Selected delivery address and locality.
+- Map coordinates or a location link where appropriate.
+- Complete delivery instructions.
+- Ordered products and quantities.
+- Verified order total.
+- Payment method and actual payment status.
+- Current order acceptance and fulfillment status.
+- Accept and Reject buttons.
+
+The owner must be able to open an order and read the delivery instructions before deciding whether to accept it.
+
+If the customer writes:
+
+"Call me when you arrive."
+
+"Leave the groceries at the gate."
+
+"House near the village bus stop."
+
+These instructions must be saved with the order and visible to the store owner and, where necessary for fulfillment, the assigned delivery partner.
+
+## Accept Order
+
+When the store owner clicks Accept:
+
+1. Send an authenticated request to the backend.
+2. Verify that this owner manages the order's store.
+3. Confirm that the order is still awaiting acceptance.
+4. Revalidate stock and fulfillment conditions.
+5. Persist the acceptance and timestamp.
+6. Notify the customer in real time.
+7. Initiate delivery-partner assignment.
+8. Update the order in the store owner's dashboard.
+9. Update the customer's order status and timeline.
+10. Return a success message only after the backend confirms the operation.
+
+If the acceptance fails, preserve the actual order status and explain the error.
+
+Prevent concurrent or repeated operations from accepting and rejecting the same order.
+
+## Reject Order
+
+Require a rejection reason and confirmation before submission.
+
+On successful rejection:
+- Save the rejection and its reason.
+- Notify the customer.
+- Update the store dashboard and customer order page.
+- Do not assign a delivery partner.
+- Start the appropriate refund workflow for payments that were collected.
+
+Never show a successful rejection if the backend failed.
+
+# 5. Real-Time Delivery Partner Assignment and Acceptance
+
+Once the store owner accepts an order, the backend must automatically initiate delivery-partner assignment.
+
+The delivery partner should not have to wait for a manual database change or an unrelated admin action.
+
+## Find eligible partners
+
+Select eligible delivery partners using actual records and configured rules, including:
+- Active and authorized account.
+- Availability to accept new deliveries.
+- Service-area eligibility.
+- Relevant pickup and delivery locations.
+- Current workload.
+- Location data when available.
+- Other operational restrictions configured by the platform.
+
+Use real store and destination coordinates. Use actual route or distance information when available.
+
+Do not randomly assign an invented delivery partner.
+
+## Make the assignment available to the partner
+
+After the store accepts the order:
+
+1. Create a persistent delivery-assignment offer.
+2. Make it available to eligible delivery partners through the delivery-partner dashboard.
+3. Push a real-time notification to the intended partner or authorized pool of partners.
+4. Display the store name, pickup location, delivery locality, item summary, and relevant delivery information.
+5. Provide Accept and Reject actions.
+6. Save the partner's decision through the backend.
+
+The partner must receive an assignment for a real order, not a dummy dispatch.
+
+## If the delivery partner accepts
+
+1. Atomically claim the assignment so another partner cannot simultaneously claim the same delivery.
+2. Save the partner ID against the assignment.
+3. Notify the store owner and customer.
+4. Display the accepted assignment in the delivery partner dashboard.
+5. Allow the partner to view the pickup store, delivery address, and authorized delivery instructions.
+6. Update all relevant views with the same assignment and status.
+
+If two partners try to accept the same assignment, only one may succeed.
+
+## If the delivery partner rejects
+
+- Record the rejection.
+- Keep the customer order active if it can still be fulfilled.
+- Offer the assignment to the next eligible partner or restart the search.
+- Notify the store owner if no suitable partner is available.
+- Do not cancel the customer order automatically unless the business rules require it.
+
+If nobody is available, show a truthful status such as Finding a Delivery Partner or Assignment Pending.
+
+Do not show an order as assigned just because the backend attempted to find a partner.
+
+## Delivery readiness
+
+A partner may accept an assignment before the store finishes packing the order, if that is the chosen workflow. However, the partner must not be marked as having picked up or delivered the order until those actual actions have occurred.
+
+Maintain consistent rules for Ready for Pickup, Picked Up, Out for Delivery, and Delivered.
+
+# 6. Synchronize Customer, Store Owner, and Delivery Partner Dashboards
+
+Use the application's existing real-time transport if it is already implemented correctly. Otherwise, configure an appropriate persistent real-time event mechanism compatible with the current backend.
+
+If the backend uses Supabase, consider authenticated Realtime subscriptions. If it uses Spring Boot, use its existing WebSocket or suitable event-based architecture.
+
+Do not introduce two competing real-time systems.
+
+Every important state change must:
+- Be saved in the backend.
+- Be reflected in the appropriate dashboard.
+- Produce the appropriate notification.
+- Update the order timeline.
+- Remain correct after refreshing or reopening the page.
+
+Examples:
+
+**Customer places an order**
+- Correct store receives a live incoming order.
+- Customer sees Awaiting Store Acceptance.
+
+**Store accepts**
+- Customer sees Store Accepted.
+- Delivery assignment begins.
+- Eligible delivery partners receive the offer.
+
+**Delivery partner accepts**
+- Customer sees the assigned partner or assignment status.
+- Store owner sees the accepted assignment.
+- Delivery partner sees the new delivery in their active list.
+
+**Partner picks up**
+- Customer sees Out for Delivery only when the order is actually picked up.
+- Store owner and delivery partner see the same state.
+
+**Partner completes delivery**
+- Backend records Delivered.
+- Customer and store see the completed order.
+
+If the real-time connection disconnects, reconnect safely and fetch the latest backend state. Do not rely exclusively on temporary browser notifications.
+
+Persist notification records if the existing architecture supports them, so users can see important updates after signing out and signing in again.
+
+# 7. Correct the Maps and Live Tracking Workflow
+
+Use the existing Google Maps integration and preserve its configured key.
+
+For each order, load:
+- Actual store pickup coordinates.
+- The order's saved customer delivery coordinates.
+- Calculated road route, where available.
+- Road distance and estimated travel time, where available.
+- Actual delivery-partner location only when location updates are available.
+
+Display the correct route from the order's store to the saved delivery destination.
+
+Do not use the currently selected default address to override an existing order's saved destination.
+
+## Map updates
+
+- If the customer changes the destination before placing a new order, update the checkout map and route.
+- Once the order is placed, save an immutable destination snapshot for that order.
+- If the store is changed before placing a new order, recompute serviceability and routing for that store.
+- After assignment, the delivery-partner dashboard must use the correct pickup and delivery coordinates.
+- After a genuine partner location update, show the latest available partner location on the tracking map.
+- Do not generate fake rider movements or pretend that a route estimate is live rider GPS.
+
+If Maps configuration or a route service is unavailable, display a clear error or honest fallback. Never invent a distance or silently show an outdated route.
+
+# 8. Enforce Four Separate User Roles
+
+Implement proper authentication and authorization for:
+
+1. Customer.
+2. Store Owner.
+3. Delivery Partner.
+4. Admin.
+
+Inspect the existing authentication provider and reuse it where appropriate.
+
+Every role must have a proper sign-in and sign-out flow, protected routes, persistent sessions, and server-side authorization.
+
+## Customer
+- Can register and sign in.
+- Can browse stores and place orders.
+- Can manage saved delivery addresses.
+- Can view only their own orders, payments, and notifications.
+- Can sign out and have their session invalidated appropriately.
+
+## Store Owner
+- Can sign in to the authorized store dashboard.
+- Can view incoming orders only for stores they manage.
+- Can accept or reject orders.
+- Can manage authorized products, stock, opening hours, and fulfillment status.
+- Cannot view or modify another store's private orders or inventory.
+
+## Delivery Partner
+- Can sign in to the delivery dashboard.
+- Can view eligible offers and their assigned deliveries.
+- Can accept or reject offers.
+- Can update only deliveries they are authorized to handle.
+- Can access the minimum customer location and delivery instructions necessary for fulfillment.
+
+## Admin
+- Has access to administrative functions only when authorized.
+- Can manage users, stores, delivery partners, service areas, and assignment failures according to platform permissions.
+- Public users must not be able to select Admin during normal registration and thereby gain admin access.
+
+## Sign-in and sign-out correctness
+
+- Prevent users from accessing protected dashboards after signing out.
+- Redirect authenticated users to the correct role-specific landing page.
+- Verify role permissions on the backend, not only in React.
+- Do not rely on a user-editable role field to grant privileges.
+- Prevent expired or revoked sessions from continuing to access protected operations.
+- When a role is unauthorized, return an appropriate forbidden or authentication response.
+
+Reuse the project's established authentication system. If the current application uses Supabase, use Supabase Auth and its authorization capabilities. If it uses Spring Security and JWT, preserve and extend that arrangement rather than replacing it.
+
+# 9. Fix the Current Delivery Partner Dashboard Problem
+
+My screenshot shows an order timeline indicating that an order is confirmed, but the delivery partner dashboard displays:
+
+- Active Deliveries: 0.
+- Available Dispatches: 0.
+- "No active deliveries right now."
+
+Correct this inconsistent behavior.
+
+First identify the real order and assignment state in the backend.
+
+If the store has accepted the order and an assignment offer has been created, that offer must appear in the eligible delivery partner's dispatch list in real time.
+
+If no eligible partner has been found, the order must display Assignment Pending rather than falsely appearing assigned or out for delivery.
+
+Do not force the Available Dispatches count to a hardcoded nonzero value.
+
+Ensure the following counts are derived from the appropriate backend records:
+- Active Deliveries.
+- Available Dispatches.
+- Ready for Pickup.
+- Completed Deliveries.
+- Today's Earnings, where supported by actual transaction data.
+- Partner Rating, where supported by actual review data.
+
+Do not use the number of confirmed customer orders as a substitute for the number of delivery assignments.
+
+# 10. Database and Transaction Consistency
+
+Inspect the existing database schema before changing it.
+
+Reuse existing tables and migrations where possible. Do not drop tables or erase existing data.
+
+The system must persist and correctly relate:
+- Users and roles.
+- Store ownership.
+- Stores and coordinates.
+- Products and store-specific inventory.
+- Customer delivery addresses.
+- Orders and order items.
+- Delivery instructions.
+- Payment records.
+- Delivery assignments.
+- Order status history.
+- Notifications.
+
+Use transactions or equivalent atomic operations for critical actions such as:
+- Creating orders.
+- Accepting or rejecting orders.
+- Updating stock.
+- Claiming a delivery assignment.
+- Recording payment results.
+- Updating delivery status.
+
+Prevent:
+- Duplicate orders.
+- Duplicate assignment acceptance.
+- Conflicting order states.
+- Negative inventory.
+- Unauthorized status changes.
+- Duplicate payment processing.
+- Stale customer addresses being saved to new orders.
+
+The backend/database is the source of truth. Do not use independent hardcoded state in each dashboard.
+
+# 11. Testing Requirements
+
+Use separate browser sessions and separate authorized test accounts to verify the workflow.
+
+## Test A: Address consistency
+1. Select Ring Road.
+2. Verify the address shown in the header.
+3. Open Checkout.
+4. Verify that Checkout displays Ring Road.
+5. Verify that the map marker, route, address, and available route details match Ring Road.
+6. Place an order.
+7. Open that order's tracking page.
+8. Confirm that it still shows the saved Ring Road destination.
+
+## Test B: Customer-to-store synchronization
+1. Sign in as a customer.
+2. Order products from D-Mart.
+3. Confirm the order.
+4. Sign in separately as the D-Mart store owner.
+5. Verify that the real order appears without manually refreshing.
+6. Open it and verify delivery instructions, address, products, total, and payment status.
+
+## Test C: Store acceptance and rejection
+1. Accept an order from the authorized store owner.
+2. Confirm that the customer immediately sees Store Accepted.
+3. Confirm that a delivery assignment is created.
+4. Test a separate order that the store owner rejects.
+5. Verify that the rejected order is not offered to delivery partners.
+
+## Test D: Delivery partner acceptance and rejection
+1. Verify that the new assignment appears in the correct eligible partner's dashboard.
+2. Accept the assignment.
+3. Verify that the partner, store owner, and customer see consistent assignment information.
+4. Test partner rejection on a separate assignment.
+5. Verify that the system offers it to another eligible partner or truthfully reports that assignment is pending.
+6. Confirm that no order is assigned to two partners simultaneously.
+
+## Test E: End-to-end status updates
+1. Store owner marks the order Preparing.
+2. Store owner marks it Ready for Pickup.
+3. Assigned delivery partner marks it Picked Up.
+4. The customer sees Out for Delivery after pickup.
+5. The assigned partner completes the delivery.
+6. All dashboards show Delivered with the correct timestamps.
+
+## Test F: Authorization
+- Customer cannot view another customer's private order.
+- Store owner cannot access another store's order.
+- Delivery partner cannot update an unrelated delivery.
+- Unauthenticated users cannot access protected dashboards or APIs.
+- Signing out prevents further access to protected operations.
+
+If any test fails, fix the actual cause before reporting completion.
+
+# 12. Implementation Order
+
+Implement the corrections in this order:
+
+1. Diagnose and fix the selected-address/map mismatch.
+2. Inspect and correct the backend order-state model.
+3. Connect customer order creation to the correct store owner.
+4. Implement genuine store acceptance and rejection.
+5. Implement real-time customer notifications.
+6. Implement persistent delivery-assignment offers with partner acceptance/rejection.
+7. Synchronize the delivery partner dashboard and tracking map.
+8. Complete role-specific authentication, sign-out, and backend authorization.
+9. Verify order totals, inventory, payment state, and database consistency.
+10. Run the end-to-end tests.
+
+If a backend, authentication provider, payment provider, or Maps API is missing or not configured, identify exactly what is needed. Do not fabricate successful integrations or silently replace the existing architecture.
+
+# FINAL ACCEPTANCE CRITERION
+
+The application is not complete merely because the dashboards look correct.
+
+The required end-to-end behavior is:
+
+**Customer selects the delivery address and places an order → the correct store owner receives the actual order and delivery instructions in real time → the store owner accepts or rejects → the customer receives the corresponding update → after acceptance, eligible delivery partners receive assignment offers → one partner accepts or rejects → assignment and order status update across the customer, store owner, and partner dashboards → the map displays the correct saved destination, real route information, and genuine rider location when available.**
+
+Preserve existing working code, use the actual database and APIs, implement strict authorization for all four roles, and report what was genuinely tested and what remains to be configured.

@@ -1,9 +1,12 @@
 import express from 'express';
+import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Server as SocketIOServer } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
 import { authMiddleware } from './src/server/auth.js';
 import { realtimeHub } from './src/server/realtime.js';
+import { connectMongoDB, isMongoDbConnected } from './src/server/mongodb.js';
 import authRoutes from './src/server/routes/authRoutes.js';
 import storeRoutes from './src/server/routes/storeRoutes.js';
 import orderRoutes from './src/server/routes/orderRoutes.js';
@@ -17,10 +20,23 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
+  const httpServer = http.createServer(app);
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Basic CORS headers
+  // Connect to MongoDB if configured via MONGODB_URI
+  await connectMongoDB();
+
+  // Socket.IO Server initialization with CORS
+  const io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    },
+  });
+  realtimeHub.attachSocketIO(io);
+
+  // Basic CORS headers for Express
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -74,11 +90,13 @@ async function startServer() {
   app.use('/api/payment', paymentRoutes);
   app.use('/api/location', locationRoutes);
 
-  // Health check
+  // Health check with DB status
   app.get('/api/health', (_req, res) => {
     res.json({
       status: 'healthy',
       app: 'GroceryGo',
+      database: isMongoDbConnected() ? 'MongoDB (Connected)' : 'Persistent Database (Ready)',
+      isMongoConnected: isMongoDbConnected(),
       time: new Date().toISOString(),
       activeSubscribers: realtimeHub.getSubscriberCount(),
     });
@@ -99,7 +117,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`GroceryGo server running on http://localhost:${PORT} (${isProduction ? 'production' : 'development'})`);
   });
 }

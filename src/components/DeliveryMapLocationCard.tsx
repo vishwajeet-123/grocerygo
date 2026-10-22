@@ -35,7 +35,9 @@ export const DeliveryMapLocationCard: React.FC<DeliveryMapLocationCardProps> = (
   onContinueToPayment,
 }) => {
   const addressText = selectedAddress
-    ? selectedAddress.streetAddress
+    ? (selectedAddress.streetAddress.includes(selectedAddress.pincode)
+        ? selectedAddress.streetAddress
+        : `${selectedAddress.streetAddress}, Mysuru - ${selectedAddress.pincode}`)
     : deliveryLocationObj?.address || '#123, 5th Cross, Hootagalli, Mysuru - 570018';
 
   const addressLabel = selectedAddress ? selectedAddress.label : deliveryLocationObj?.name || 'Home';
@@ -49,14 +51,20 @@ export const DeliveryMapLocationCard: React.FC<DeliveryMapLocationCardProps> = (
   }, [store.lat, store.lng]);
 
   const customerPos = useMemo(() => {
+    if (selectedAddress?.lat && selectedAddress?.lng) {
+      return { lat: selectedAddress.lat, lng: selectedAddress.lng };
+    }
     if (deliveryLocationObj?.lat && deliveryLocationObj?.lng) {
       return { lat: deliveryLocationObj.lat, lng: deliveryLocationObj.lng };
     }
     if (selectedAddress?.label === 'College') {
       return { lat: 12.285, lng: 76.645 };
     }
+    if (selectedAddress?.streetAddress?.toLowerCase().includes('ring road')) {
+      return { lat: 12.3150, lng: 76.6120 };
+    }
     return { lat: 12.3375, lng: 76.598 };
-  }, [deliveryLocationObj, selectedAddress]);
+  }, [selectedAddress, deliveryLocationObj]);
 
   // Compute straight-line and estimated road distance
   const straightLineKm = useMemo(() => {

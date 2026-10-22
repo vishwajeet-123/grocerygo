@@ -12,19 +12,34 @@ router.get('/partners', requireAuth, (_req, res: Response) => {
 });
 
 // Get deliveries for current logged in delivery partner
+// Get deliveries assigned to the current logged in delivery partner
 router.get('/my-deliveries', requireAuth, requireRole(['delivery_partner', 'admin']), (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   const db = getDb();
 
   const partnerId = user.deliveryPartnerId;
   const deliveries = db.orders.filter(
-    (o) => o.deliveryPartner?.id === partnerId || o.status === 'packing' || o.status === 'out_for_delivery'
+    (o) => o.deliveryPartner?.id === partnerId
   );
 
   res.json(deliveries);
 });
 
-// Partner accepts delivery assignment
+// Get available dispatches waiting for a delivery partner to accept
+router.get('/available-dispatches', requireAuth, requireRole(['delivery_partner', 'admin']), (_req: AuthenticatedRequest, res: Response) => {
+  const db = getDb();
+
+  // Orders that are confirmed or packing and do not have an accepted delivery partner yet
+  const available = db.orders.filter(
+    (o) =>
+      (o.status === 'confirmed' || o.status === 'packing') &&
+      (!o.deliveryPartner || o.deliveryAssignmentStatus === 'offered' || o.deliveryAssignmentStatus === 'searching' || !o.deliveryAssignmentStatus)
+  );
+
+  res.json(available);
+});
+
+// Partner accepts delivery assignment offer (Atomic Claim)
 router.post('/accept-order', requireAuth, requireRole(['delivery_partner']), (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   const { orderId } = req.body;
@@ -49,7 +64,48 @@ router.post('/accept-order', requireAuth, requireRole(['delivery_partner']), (re
     currentLng: 76.5980,
   };
 
+  // Atomic conflict check: prevent duplicate assignment claims
+  if (order.deliveryPartner && order.deliveryPartner.id !== partner.id && order.deliveryAssignmentStatus === 'accepted') {
+    res.status(409).json({ error: 'This delivery offer was already claimed by another delivery partner.' });
+    return;
+  }
+
   order.deliveryPartner = partner;
+  order.deliveryAssignmentStatus = 'accepted';
+  order.assignedPartnerId = partner.id;
+
+  saveDb(db);
+
+  realtimeHub.broadcast('delivery_assigned', {
+    orderId,
+    deliveryPartner: partner,
+    order,
+  });
+
+  realtimeHub.broadcast('order_updated', {
+    order,
+    status: order.status,
+    deliveryPartner: partner,
+  });
+
+  res.json({ success: true, order });
+});
+
+// Partner confirms pickup from store -> transitions to 'out_for_delivery'
+router.post('/pickup-order', requireAuth, requireRole(['delivery_partner', 'admin']), (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user!;
+  const { orderId } = req.body;
+
+  const db = getDb();
+  const order = db.orders.find((o) => o.id === orderId);
+  if (!order) {
+    res.status(404).json({ error: 'Order not found' });
+    return;
+  }
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   order.status = 'out_for_delivery';
 
   // update timeline step
@@ -57,22 +113,52 @@ router.post('/accept-order', requireAuth, requireRole(['delivery_partner']), (re
   if (outStep) {
     outStep.isCompleted = true;
     outStep.isCurrent = true;
-    outStep.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    outStep.time = timeStr;
+  }
+  const packStep = order.timeline.find((s) => s.status === 'packing');
+  if (packStep) {
+    packStep.isCompleted = true;
+    packStep.isCurrent = false;
   }
 
   saveDb(db);
 
-  realtimeHub.broadcast('delivery_assigned', {
-    orderId,
-    deliveryPartner: partner,
-  });
-
   realtimeHub.broadcast('order_updated', {
     order,
     status: 'out_for_delivery',
+    updatedBy: user.name,
+    role: user.role,
   });
 
   res.json({ success: true, order });
+});
+
+// Partner declines delivery assignment offer
+router.post('/reject-order', requireAuth, requireRole(['delivery_partner']), (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user!;
+  const { orderId, reason } = req.body;
+
+  const db = getDb();
+  const order = db.orders.find((o) => o.id === orderId);
+  if (!order) {
+    res.status(404).json({ error: 'Order not found' });
+    return;
+  }
+
+  if (order.deliveryPartner?.id === user.deliveryPartnerId) {
+    order.deliveryPartner = undefined;
+    order.deliveryAssignmentStatus = 'searching';
+  }
+
+  saveDb(db);
+
+  realtimeHub.broadcast('order_updated', {
+    order,
+    status: order.status,
+    note: `Delivery declined by partner (${reason || 'Unavailable'})`,
+  });
+
+  res.json({ success: true, message: 'Delivery offer declined.' });
 });
 
 // Update delivery partner GPS coordinates in real-time

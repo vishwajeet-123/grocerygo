@@ -10,6 +10,9 @@ export interface SavedAddress {
   landmark?: string;
   pincode: string;
   isDefault: boolean;
+  lat?: number;
+  lng?: number;
+  locality?: string;
 }
 
 interface AddressSelectorProps {

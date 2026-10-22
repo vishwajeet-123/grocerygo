@@ -43,7 +43,7 @@ import {
 import { STORES } from '../data/stores';
 import { PRODUCTS } from '../data/products';
 import { Product, Store as StoreType } from '../types';
-import { ordersApi, storesApi, subscribeToRealtime, OrderModel } from '../utils/api';
+import { ordersApi, storesApi, subscribeToRealtime, OrderModel, UserSession } from '../utils/api';
 
 export type DashboardTab =
   | 'dashboard'
@@ -58,6 +58,8 @@ export type DashboardTab =
   | 'settings';
 
 interface StoreOwnerDashboardProps {
+  currentUser?: UserSession | null;
+  onLogout?: () => void;
   onNavigateCustomerHome?: () => void;
   onNavigateCustomerStores?: () => void;
   onNavigateCustomerOrders?: () => void;
@@ -76,6 +78,7 @@ export interface IncomingOrder {
   totalAmount: number;
   paymentMethod: 'COD' | 'Online';
   status: 'new' | 'accepted' | 'rejected' | 'preparing' | 'ready';
+  deliveryInstructions?: string;
   image: string;
   items: {
     name: string;
@@ -237,6 +240,8 @@ const INITIAL_INVENTORY_ALERTS: InventoryAlertItem[] = [
 ];
 
 export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
+  currentUser,
+  onLogout,
   onNavigateCustomerHome,
   onNavigateCustomerStores,
   onNavigateCustomerOrders,
@@ -247,8 +252,22 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
 
   // Store selection state
   const [currentStore, setCurrentStore] = useState<StoreType>(() => {
+    if (currentUser?.storeId) {
+      const matched = STORES.find((s) => s.id === currentUser.storeId);
+      if (matched) return matched;
+    }
     return STORES.find((s) => s.id === 'shree-lakshmi-kirana') || STORES[0];
   });
+
+  useEffect(() => {
+    if (currentUser?.storeId) {
+      const matched = STORES.find((s) => s.id === currentUser.storeId);
+      if (matched && matched.id !== currentStore.id) {
+        setCurrentStore(matched);
+      }
+    }
+  }, [currentUser?.storeId]);
+
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const [isStoreOpen, setIsStoreOpen] = useState<boolean>(true);
 
@@ -330,20 +349,27 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
           const mapped: IncomingOrder[] = backendOrders.map((bo: any) => ({
             id: bo.id,
             orderNumber: bo.orderNumber,
-            customerName: bo.customerName,
-            customerPhone: bo.customerPhone,
-            locality: bo.deliveryAddress.locality || bo.deliveryAddress.streetAddress,
-            itemCount: bo.items.reduce((sum: number, item: any) => sum + item.count, 0),
-            itemSummary: bo.items.map((i: any) => `${i.name} (${i.quantity})`).join(', '),
+            customerName: bo.customerName || bo.deliveryAddress?.name || 'Customer',
+            customerPhone: bo.customerPhone || '+91 98765 43210',
+            locality: bo.deliveryAddress?.address || bo.deliveryAddress?.locality || bo.deliveryAddress?.streetAddress || 'Mysuru',
+            itemCount: (bo.items || []).reduce((sum: number, item: any) => sum + (item.count || item.quantity || 1), 0),
+            itemSummary: (bo.items || []).map((i: any) => `${i.name} (${i.quantity})`).join(', '),
             timeAgo: 'Recently',
             totalAmount: bo.totalAmount,
-            paymentMethod: bo.paymentMethod === 'cod' ? ('COD' as const) : ('Online' as const),
+            paymentMethod: (bo.paymentMethod || '').toLowerCase().includes('cash') || bo.paymentStatus === 'cod' ? ('COD' as const) : ('Online' as const),
             status:
-              bo.storeAcceptanceStatus === 'awaiting_acceptance'
+              bo.status === 'placed' || bo.storeAcceptanceStatus === 'awaiting_acceptance'
                 ? ('new' as const)
-                : (bo.storeAcceptanceStatus as any),
+                : bo.status === 'confirmed' || bo.storeAcceptanceStatus === 'accepted'
+                ? ('accepted' as const)
+                : bo.status === 'packing'
+                ? ('ready' as const)
+                : bo.status === 'cancelled'
+                ? ('rejected' as const)
+                : ('accepted' as const),
+            deliveryInstructions: bo.deliveryInstructions || bo.instructions || '',
             image: bo.items[0]?.image || '/src/assets/images/prod_atta_bag_1792249996274.jpg',
-            items: bo.items.map((i: any) => ({
+            items: (bo.items || []).map((i: any) => ({
               name: i.name,
               quantity: i.quantity,
               unitPrice: i.unitPrice,
@@ -368,27 +394,29 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
     // 3. Subscribe to real-time events for this store
     const unsubscribe = subscribeToRealtime(
       (event) => {
-        if (event.type === 'order_received' && event.payload?.order) {
-          const bo: OrderModel = event.payload.order;
-          if (bo.storeId === currentStore.id) {
+        if ((event.type === 'order_created' || event.type === 'order_received') && event.payload?.order) {
+          const bo: any = event.payload.order;
+          const storeId = bo.store?.id || bo.storeId || event.payload?.storeId;
+          if (storeId === currentStore.id) {
             const newIncoming: IncomingOrder = {
               id: bo.id,
               orderNumber: bo.orderNumber,
-              customerName: bo.customerName,
-              customerPhone: bo.customerPhone,
-              locality: bo.deliveryAddress.locality || bo.deliveryAddress.streetAddress,
-              itemCount: bo.items.reduce((sum, item) => sum + item.count, 0),
-              itemSummary: bo.items.map((i) => `${i.name} (${i.quantity})`).join(', '),
+              customerName: bo.customerName || bo.deliveryAddress?.name || 'Customer',
+              customerPhone: bo.customerPhone || '+91 98765 43210',
+              locality: bo.deliveryAddress?.address || bo.deliveryAddress?.locality || bo.deliveryAddress?.streetAddress || 'Mysuru',
+              itemCount: (bo.items || []).reduce((sum: number, item: any) => sum + (item.count || item.quantity || 1), 0),
+              itemSummary: (bo.items || []).map((i: any) => `${i.name || i.product?.name} (${i.quantity || i.product?.quantity || '1 unit'})`).join(', '),
               timeAgo: 'Just now',
               totalAmount: bo.totalAmount,
-              paymentMethod: bo.paymentMethod === 'cod' ? 'COD' : 'Online',
+              paymentMethod: (bo.paymentMethod || '').toLowerCase().includes('cash') || bo.paymentStatus === 'cod' ? 'COD' : 'Online',
               status: 'new',
-              image: bo.items[0]?.image || '/src/assets/images/prod_atta_bag_1792249996274.jpg',
-              items: bo.items.map((i) => ({
-                name: i.name,
-                quantity: i.quantity,
-                unitPrice: i.unitPrice,
-                count: i.count,
+              deliveryInstructions: bo.deliveryInstructions || bo.instructions || '',
+              image: bo.items?.[0]?.image || bo.items?.[0]?.product?.image || '/src/assets/images/prod_atta_bag_1792249996274.jpg',
+              items: (bo.items || []).map((i: any) => ({
+                name: i.name || i.product?.name || 'Grocery Item',
+                quantity: i.quantity || i.product?.quantity || '1 unit',
+                unitPrice: i.unitPrice || i.product?.price || 0,
+                count: i.count || i.quantity || 1,
               })),
             };
 
@@ -398,7 +426,7 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
               {
                 id: `notif-${Date.now()}`,
                 title: `Incoming Order ${bo.orderNumber}`,
-                desc: `${bo.customerName} ordered ${bo.items.length} items (₹${bo.totalAmount})`,
+                desc: `${newIncoming.customerName} ordered ${newIncoming.itemCount} items (₹${bo.totalAmount})`,
                 time: 'Just now',
                 unread: true,
                 type: 'order',
@@ -406,7 +434,7 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
               ...prev,
             ]);
 
-            showToast(`🔔 Real-Time Alert: New incoming order ${bo.orderNumber} from ${bo.customerName}!`);
+            showToast(`🔔 Real-Time Alert: New incoming order ${bo.orderNumber} from ${newIncoming.customerName}!`);
 
             // Sound chime
             if (soundAlertsEnabled) {
@@ -423,6 +451,26 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
               } catch {}
             }
           }
+        } else if (event.type === 'order_updated' && event.payload?.order) {
+          const bo = event.payload.order;
+          setOrdersList((prev) =>
+            prev.map((o) => {
+              if (o.id === bo.id) {
+                return {
+                  ...o,
+                  status:
+                    bo.status === 'confirmed'
+                      ? 'accepted'
+                      : bo.status === 'packing'
+                      ? 'ready'
+                      : bo.status === 'cancelled'
+                      ? 'rejected'
+                      : o.status,
+                };
+              }
+              return o;
+            })
+          );
         }
       },
       { storeId: currentStore.id }
@@ -437,22 +485,41 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
   }, [ordersList]);
 
   const acceptedOrders = useMemo(() => {
-    return ordersList.filter((o) => o.status === 'accepted' || o.status === 'preparing');
+    return ordersList.filter((o) => o.status === 'accepted' || o.status === 'preparing' || o.status === 'ready');
   }, [ordersList]);
 
   // Handle Accept Order (Real Database API)
-  const handleAcceptOrder = (order: IncomingOrder, e?: React.MouseEvent) => {
+  const handleAcceptOrder = async (order: IncomingOrder, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setOrdersList((prev) =>
-      prev.map((o) => (o.id === order.id ? { ...o, status: 'accepted' } : o))
-    );
-    showToast(`Order ${order.orderNumber} accepted! Moved to preparation queue.`);
-    if (selectedOrderForModal?.id === order.id) {
-      setSelectedOrderForModal({ ...order, status: 'accepted' });
+    try {
+      await ordersApi.acceptOrder(order.id);
+      setOrdersList((prev) =>
+        prev.map((o) => (o.id === order.id ? { ...o, status: 'accepted' } : o))
+      );
+      showToast(`Order ${order.orderNumber} accepted! Delivery partner search initiated.`);
+      if (selectedOrderForModal?.id === order.id) {
+        setSelectedOrderForModal({ ...order, status: 'accepted' });
+      }
+    } catch (err: any) {
+      showToast(`Accept order failed: ${err.message || 'Error'}`);
     }
-    ordersApi.acceptOrder(order.id).catch((err) => {
-      console.warn('Accept order API notice:', err);
-    });
+  };
+
+  // Handle Mark Ready for Pickup
+  const handleMarkReady = async (order: IncomingOrder, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      await ordersApi.markReady(order.id);
+      setOrdersList((prev) =>
+        prev.map((o) => (o.id === order.id ? { ...o, status: 'ready' } : o))
+      );
+      showToast(`Order ${order.orderNumber} packed and marked ready for driver pickup!`);
+      if (selectedOrderForModal?.id === order.id) {
+        setSelectedOrderForModal({ ...order, status: 'ready' });
+      }
+    } catch (err: any) {
+      showToast(`Failed: ${err.message || 'Error'}`);
+    }
   };
 
   // Handle Confirm Reject Order (Real Database API)
@@ -780,11 +847,16 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 cursor-pointer"
             >
               <div className="w-8 h-8 rounded-full bg-emerald-800 text-white font-bold text-xs flex items-center justify-center ring-2 ring-emerald-200 shrink-0">
-                RK
+                {(currentUser?.name || 'Ramesh Kumar')
+                  .split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase()}
               </div>
               <div className="hidden sm:flex flex-col text-left">
                 <span className="text-xs font-bold text-slate-900 leading-none">
-                  Ramesh Kumar
+                  {currentUser?.name || 'Ramesh Kumar'}
                 </span>
                 <span className="text-[10px] font-medium text-slate-500 mt-0.5">
                   Store Owner
@@ -797,8 +869,8 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
             {isProfileDropdownOpen && (
               <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 text-left">
                 <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                  <p className="text-xs font-bold text-slate-900">Ramesh Kumar</p>
-                  <p className="text-[11px] text-slate-500">ramesh.kirana@grocerygo.in</p>
+                  <p className="text-xs font-bold text-slate-900">{currentUser?.name || 'Ramesh Kumar'}</p>
+                  <p className="text-[11px] text-slate-500">{currentUser?.email || 'owner@kirana.in'}</p>
                   <span className="inline-block mt-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-semibold">
                     Verified Store Partner
                   </span>
@@ -849,12 +921,16 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
                     type="button"
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
-                      showToast('Demo store owner session active.');
+                      if (onLogout) {
+                        onLogout();
+                      } else {
+                        showToast('Signed out.');
+                      }
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-slate-500 text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-rose-50 text-rose-600 font-medium text-left cursor-pointer transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Lock Dashboard (Demo)</span>
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>
@@ -2125,6 +2201,14 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
                 <span className="font-semibold text-slate-700">Payment Mode:</span>
                 <span className="font-bold text-emerald-800">{selectedOrderForModal.paymentMethod}</span>
               </div>
+              {selectedOrderForModal.deliveryInstructions && (
+                <div className="bg-amber-50/80 p-2 rounded-lg border border-amber-200 text-xs text-amber-900 mt-1">
+                  <span className="font-bold block text-[11px] uppercase tracking-wider mb-0.5 text-amber-800">
+                    Customer Delivery Instructions:
+                  </span>
+                  <p className="italic text-xs font-medium">"{selectedOrderForModal.deliveryInstructions}"</p>
+                </div>
+              )}
             </div>
 
             {/* Items Breakdown */}
@@ -2174,13 +2258,10 @@ export const StoreOwnerDashboard: React.FC<StoreOwnerDashboardProps> = ({
               {selectedOrderForModal.status === 'accepted' && (
                 <button
                   type="button"
-                  onClick={() => {
-                    showToast(`Dispatched order ${selectedOrderForModal.orderNumber} to delivery partner!`);
-                    setSelectedOrderForModal(null);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
+                  onClick={() => handleMarkReady(selectedOrderForModal)}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer"
                 >
-                  Mark Handed to Driver
+                  Mark Ready for Pickup (Packed)
                 </button>
               )}
             </div>

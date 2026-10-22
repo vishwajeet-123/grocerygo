@@ -80,15 +80,59 @@ export default function App() {
   const [selectedStoreId, setSelectedStoreId] = useState<string>('shree-lakshmi-kirana');
   const [activeCategorySlug, setActiveCategorySlug] = useState('Fruits & Vegetables');
 
+  // Shared Checkout & Addresses state (Unified source of truth)
+  const [addresses, setAddresses] = useState<SavedAddress[]>([
+    {
+      id: 'addr-home',
+      label: 'Home',
+      recipientName: 'Vishwajeet',
+      phone: '+91 98765 43210',
+      streetAddress: '#123, 5th Cross, Hootagalli, Mysuru - 570018',
+      landmark: 'Near Primary Health Center',
+      pincode: '570018',
+      isDefault: true,
+      lat: 12.3375,
+      lng: 76.5980,
+      locality: 'Hootagalli',
+    },
+    {
+      id: 'addr-ringroad',
+      label: 'Other',
+      recipientName: 'Vishwajeet',
+      phone: '+91 98765 43210',
+      streetAddress: 'Ring Road, Near Bogadi Junction, Mysuru - 570026',
+      landmark: 'Ring Road Flyover',
+      pincode: '570026',
+      isDefault: false,
+      lat: 12.3150,
+      lng: 76.6120,
+      locality: 'Ring Road',
+    },
+    {
+      id: 'addr-college',
+      label: 'College',
+      recipientName: 'Vishwajeet',
+      phone: '+91 98765 43210',
+      streetAddress: 'NIE, Manandavadi Road, Mysuru - 570008',
+      landmark: 'National Institute of Engineering Main Gate',
+      pincode: '570008',
+      isDefault: false,
+      lat: 12.2850,
+      lng: 76.6450,
+      locality: 'Manandavadi Road',
+    },
+  ]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('addr-home');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('#123, 5th Cross, Hootagalli, Mysuru - 570018');
   const [selectedLocationObj, setSelectedLocationObj] = useState<DeliveryLocation>(() => ({
-    id: 'loc-default',
+    id: 'addr-home',
     name: 'Hootagalli',
     address: '#123, 5th Cross, Hootagalli, Mysuru - 570018',
     landmark: 'Mysuru, Karnataka',
-    lat: 12.3392,
-    lng: 76.5927,
+    lat: 12.3375,
+    lng: 76.5980,
     distanceKm: 0.8,
     estimatedMins: 20,
     isRemote: false,
@@ -101,12 +145,65 @@ export default function App() {
     setSelectedLocation(addressText);
     if (locObj) {
       setSelectedLocationObj(locObj);
+      const lower = addressText.toLowerCase();
+      const existing = addresses.find(
+        (a) =>
+          a.id === locObj.id ||
+          a.streetAddress.toLowerCase() === lower ||
+          (a.locality && lower.includes(a.locality.toLowerCase())) ||
+          (locObj.name && a.streetAddress.toLowerCase().includes(locObj.name.toLowerCase()))
+      );
+      if (existing) {
+        setSelectedAddressId(existing.id);
+      } else {
+        const newAddrId = `addr-${Date.now()}`;
+        const newSavedAddr: SavedAddress = {
+          id: newAddrId,
+          label: locObj.localityType === 'remote_village' ? 'Other' : 'Home',
+          recipientName: currentUser?.name || 'Vishwajeet',
+          phone: currentUser?.phone || '+91 98765 43210',
+          streetAddress: addressText,
+          landmark: locObj.landmark || locObj.name || '',
+          pincode: addressText.match(/\b\d{6}\b/)?.[0] || '570018',
+          isDefault: false,
+          lat: locObj.lat,
+          lng: locObj.lng,
+          locality: locObj.name,
+        };
+        setAddresses((prev) => [newSavedAddr, ...prev]);
+        setSelectedAddressId(newAddrId);
+      }
     } else {
       setSelectedLocationObj((prev) => ({
         ...prev,
         address: addressText,
         name: addressText.split(',')[0],
       }));
+    }
+  };
+
+  const handleSelectAddress = (id: string) => {
+    setSelectedAddressId(id);
+    const found = addresses.find((a) => a.id === id);
+    if (found) {
+      const fullAddr = found.streetAddress.includes(found.pincode)
+        ? found.streetAddress
+        : `${found.streetAddress}, Mysuru - ${found.pincode}`;
+      setSelectedLocation(fullAddr);
+      setSelectedLocationObj({
+        id: found.id,
+        name: found.locality || found.label,
+        address: fullAddr,
+        landmark: found.landmark || found.streetAddress,
+        lat: found.lat || (found.label === 'College' ? 12.285 : found.streetAddress.toLowerCase().includes('ring road') ? 12.315 : 12.3392),
+        lng: found.lng || (found.label === 'College' ? 76.645 : found.streetAddress.toLowerCase().includes('ring road') ? 76.612 : 76.5927),
+        distanceKm: found.label === 'College' ? 7.2 : found.streetAddress.toLowerCase().includes('ring road') ? 3.8 : 0.8,
+        estimatedMins: found.label === 'College' ? 32 : found.streetAddress.toLowerCase().includes('ring road') ? 25 : 18,
+        isRemote: false,
+        localityType: 'hyperlocal',
+        deliveryFee: 0,
+        areaTag: 'Local Delivery',
+      });
     }
   };
 
@@ -160,31 +257,6 @@ export default function App() {
 
     return () => unsub();
   }, []);
-
-  // Shared Checkout & Payment state
-  const [addresses, setAddresses] = useState<SavedAddress[]>([
-    {
-      id: 'addr-home',
-      label: 'Home',
-      recipientName: 'Vishwajeet',
-      phone: '+91 98765 43210',
-      streetAddress: '#123, 5th Cross, Hootagalli, Mysuru - 570018',
-      landmark: 'Near Primary Health Center',
-      pincode: '570018',
-      isDefault: true,
-    },
-    {
-      id: 'addr-college',
-      label: 'College',
-      recipientName: 'Vishwajeet',
-      phone: '+91 98765 43210',
-      streetAddress: 'NIE, Manandavadi Road, Mysuru - 570008',
-      landmark: 'National Institute of Engineering Main Gate',
-      pincode: '570008',
-      isDefault: false,
-    },
-  ]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string>('addr-home');
   const [deliveryInstructions, setDeliveryInstructions] = useState<string>('');
   const [deliveryTimeOption, setDeliveryTimeOption] = useState<DeliveryTimeOption>('express');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
@@ -366,7 +438,12 @@ export default function App() {
   // Address operations
   const handleAddNewAddress = (newAddr: Omit<SavedAddress, 'id'>) => {
     const id = `addr-${Date.now()}`;
-    const entry: SavedAddress = { ...newAddr, id };
+    const entry: SavedAddress = {
+      ...newAddr,
+      id,
+      lat: newAddr.lat || 12.3392,
+      lng: newAddr.lng || 76.5927,
+    };
     if (entry.isDefault) {
       setAddresses((prev) => [
         ...prev.map((a) => ({ ...a, isDefault: false })),
@@ -375,8 +452,7 @@ export default function App() {
     } else {
       setAddresses((prev) => [...prev, entry]);
     }
-    setSelectedAddressId(id);
-    setSelectedLocation(`${entry.streetAddress}, Mysuru - ${entry.pincode}`);
+    handleSelectAddress(id);
   };
 
   const handleEditAddress = (updated: SavedAddress) => {
@@ -392,7 +468,7 @@ export default function App() {
       })
     );
     if (updated.id === selectedAddressId) {
-      setSelectedLocation(`${updated.streetAddress}, Mysuru - ${updated.pincode}`);
+      handleSelectAddress(updated.id);
     }
   };
 
@@ -400,8 +476,7 @@ export default function App() {
     setAddresses((prev) => {
       const remaining = prev.filter((a) => a.id !== id);
       if (selectedAddressId === id && remaining.length > 0) {
-        setSelectedAddressId(remaining[0].id);
-        setSelectedLocation(`${remaining[0].streetAddress}, Mysuru - ${remaining[0].pincode}`);
+        handleSelectAddress(remaining[0].id);
       }
       return remaining;
     });
@@ -615,6 +690,8 @@ export default function App() {
   if (currentPage === 'dashboard') {
     return (
       <StoreOwnerDashboard
+        currentUser={currentUser}
+        onLogout={handleLogout}
         onNavigateCustomerHome={() => handleNavigate('home')}
         onNavigateCustomerStores={() => handleNavigate('stores')}
         onNavigateCustomerOrders={() => handleNavigate('orders')}
@@ -722,13 +799,7 @@ export default function App() {
             store={fulfillingStore}
             addresses={addresses}
             selectedAddressId={selectedAddressId}
-            onSelectAddress={(id) => {
-              setSelectedAddressId(id);
-              const found = addresses.find((a) => a.id === id);
-              if (found) {
-                setSelectedLocation(`${found.streetAddress}, Mysuru - ${found.pincode}`);
-              }
-            }}
+            onSelectAddress={handleSelectAddress}
             onAddNewAddress={handleAddNewAddress}
             onEditAddress={handleEditAddress}
             onDeleteAddress={handleDeleteAddress}

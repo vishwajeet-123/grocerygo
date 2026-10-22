@@ -71,7 +71,7 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({
         };
       case 'packing':
         return {
-          label: 'Packing Fresh Groceries',
+          label: 'Items Packed & Ready for Pickup',
           color: 'bg-amber-50 text-amber-800 border-amber-200',
         };
       case 'out_for_delivery':
